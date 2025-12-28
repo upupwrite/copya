@@ -1,6 +1,6 @@
-#include "copya.h"
-
 #include <QApplication>
+
+#include "copya.h"
 
 int main(int argc, char *argv[])
 {

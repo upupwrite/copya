@@ -1,19 +1,21 @@
 #ifndef CLIPBOARD_H
 #define CLIPBOARD_H
 
-#include <string>
-#include <atomic>
-#include <thread>
-#include <mutex>
-#include "database.h"
 #include <QObject>
+#include <atomic>
 #include <functional>
+#include <mutex>
+#include <string>
+#include <thread>
 
-class Monitor : public QObject {
+#include "database.h"
+
+class Monitor : public QObject
+{
     Q_OBJECT
 
 public:
-    Monitor(QObject* parent = nullptr);
+    Monitor(QObject *parent = nullptr);
     ~Monitor();
 
     void start();      // 开始监控
@@ -26,14 +28,14 @@ signals:
 private:
     void monitoringLoop();  // 监控循环的私有方法
 
-    std::thread monitorThread;  // 监控线程
-    std::atomic<bool> shouldStop;  // 停止标志
-    std::mutex clipboardMutex;     // 互斥锁
+    std::thread monitorThread;       // 监控线程
+    std::atomic<bool> shouldStop;    // 停止标志
+    std::mutex clipboardMutex;       // 互斥锁
     std::atomic<bool> isMonitoring;  // 监控状态
 
     ClipDatabase db;  // 数据库实例
 };
 
-bool setClipboardWithWlCopy(const std::string& text);
+bool setClipboardWithWlCopy(const std::string &text);
 
-#endif // CLIPBOARD_H
+#endif  // CLIPBOARD_H
