@@ -98,7 +98,6 @@ Copya::~Copya()
     }
 }
 
-
 void Copya::onMarkAsImportant()
 {
     QTreeWidgetItem *currentItem = ui->treeWidget->currentItem();
@@ -393,7 +392,6 @@ void Copya::performSearch(const QString &searchText)
     isManualEdit = false;
 }
 
-
 bool Copya::eventFilter(QObject *watched, QEvent *event)
 {
     if (watched == ui->treeWidget && event->type() == QEvent::KeyPress)
@@ -434,7 +432,6 @@ void Copya::togglePlainTextEditVisibility()
     }
 }
 
-
 void Copya::closeEvent(QCloseEvent *event)
 {
     // 保存最后编辑的内容
@@ -442,7 +439,6 @@ void Copya::closeEvent(QCloseEvent *event)
 
     QMainWindow::closeEvent(event);
 }
-
 
 void Copya::loadData()
 {
@@ -453,7 +449,7 @@ void Copya::loadData()
     currentEditingId = -1;
 
     ui->treeWidget->clear();
-    ui->treeWidget->blockSignals(true); // 临时阻止treeWidget的信号
+    ui->treeWidget->blockSignals(true);  // 临时阻止treeWidget的信号
 
     auto data = database->readAllData();
     if (data.empty())
@@ -517,8 +513,8 @@ void Copya::loadData()
     ui->treeWidget->header()->setSectionResizeMode(
         1, QHeaderView::ResizeToContents);
 
-    ui->treeWidget->blockSignals(false); // 恢复信号
-    ui->plainTextEdit->blockSignals(false); // 恢复信号
+    ui->treeWidget->blockSignals(false);     // 恢复信号
+    ui->plainTextEdit->blockSignals(false);  // 恢复信号
 }
 
 void Copya::onTreeWidgetCurrentItemChanged(QTreeWidgetItem *current,
@@ -534,7 +530,7 @@ void Copya::onTreeWidgetCurrentItemChanged(QTreeWidgetItem *current,
         // 如果没有选中任何项目，清空 plainTextEdit
         ui->plainTextEdit->clear();
         currentEditingId = -1;
-        ui->plainTextEdit->blockSignals(false); // 恢复信号
+        ui->plainTextEdit->blockSignals(false);  // 恢复信号
         return;
     }
 
@@ -547,10 +543,11 @@ void Copya::onTreeWidgetCurrentItemChanged(QTreeWidgetItem *current,
         QString previousDisplayText = previous->text(0);
 
         // 更新数据库
-        if (database && database->isOpen() && !previousContent.trimmed().isEmpty())
+        if (database && database->isOpen() &&
+            !previousContent.trimmed().isEmpty())
         {
-            bool success = database->updateTextById(currentEditingId,
-                                                    previousContent.toStdString());
+            bool success = database->updateTextById(
+                currentEditingId, previousContent.toStdString());
             if (success)
             {
                 qDebug() << "保存成功，ID:" << currentEditingId;
@@ -633,8 +630,8 @@ void Copya::saveCurrentEdit()
     // 更新数据库
     if (database && database->isOpen() && !content.trimmed().isEmpty())
     {
-        bool success = database->updateTextById(currentEditingId,
-                                                content.toStdString());
+        bool success =
+            database->updateTextById(currentEditingId, content.toStdString());
         if (success)
         {
             qDebug() << "保存到数据库，ID:" << currentEditingId;
@@ -661,7 +658,8 @@ void Copya::refreshData()
             QString content = item->data(0, Qt::UserRole).toString();
             if (database && database->isOpen() && !content.trimmed().isEmpty())
             {
-                database->updateTextById(currentEditingId, content.toStdString());
+                database->updateTextById(currentEditingId,
+                                         content.toStdString());
             }
         }
     }
