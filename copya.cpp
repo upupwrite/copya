@@ -92,8 +92,8 @@ Copya::Copya(QWidget *parent)
             &Copya::onTreeWidgetCurrentItemChanged);
 
     // 创建全局快捷键（例如 Ctrl+Shift+` 显示/隐藏窗口）
-    QShortcut *showHideShortcut = new QShortcut(QKeySequence("Ctrl+Shift+`"), this);
-    connect(showHideShortcut, &QShortcut::activated, this, &Copya::toggleWindowVisibility);
+//    QShortcut *showHideShortcut = new QShortcut(QKeySequence("Ctrl+Shift+`"), this);
+//    connect(showHideShortcut, &QShortcut::activated, this, &Copya::toggleWindowVisibility);
 
     loadData();
 }

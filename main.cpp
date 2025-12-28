@@ -2,6 +2,7 @@
 #include <QSystemTrayIcon>
 #include <QMenu>
 #include <QAction>
+#include <QStyle>
 #include "copya.h"
 
 int main(int argc, char *argv[])
@@ -13,7 +14,18 @@ int main(int argc, char *argv[])
 
     // 创建系统托盘图标
     QSystemTrayIcon *trayIcon = new QSystemTrayIcon(&w);
-    trayIcon->setIcon(QIcon(":/icons/app_icon.png")); // 设置图标
+
+    // 使用Qt内置图标（选择一种）
+    // 方法1：使用QStyle的标准图标
+    trayIcon->setIcon(QApplication::style()->standardIcon(QStyle::SP_ComputerIcon));
+    // 或者使用其他内置图标：
+    // SP_MessageBoxInformation 信息图标
+    // SP_FileIcon 文件图标
+    // SP_DirIcon 文件夹图标
+    // SP_DriveHDIcon 硬盘图标
+
+    // 方法2：使用QIcon的fromTheme（如果系统有图标主题）
+    // trayIcon->setIcon(QIcon::fromTheme("edit-copy")); // 复制图标
 
     // 创建托盘菜单
     QMenu *trayMenu = new QMenu();
@@ -24,12 +36,12 @@ int main(int argc, char *argv[])
 
     trayIcon->setContextMenu(trayMenu);
 
-    // 修正连接语句
+    // 连接信号槽
     QObject::connect(showAction, &QAction::triggered, &w, &Copya::show);
     QObject::connect(hideAction, &QAction::triggered, &w, &Copya::hide);
     QObject::connect(quitAction, &QAction::triggered, &a, &QApplication::quit);
 
-    // 托盘图标点击事件（使用lambda表达式）
+    // 托盘图标点击事件
     QObject::connect(trayIcon, &QSystemTrayIcon::activated, [&w](QSystemTrayIcon::ActivationReason reason){
         if (reason == QSystemTrayIcon::DoubleClick || reason == QSystemTrayIcon::Trigger) {
             if (w.isVisible()) {
