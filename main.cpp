@@ -1,8 +1,9 @@
-#include <QApplication>
-#include <QSystemTrayIcon>
-#include <QMenu>
 #include <QAction>
+#include <QApplication>
+#include <QMenu>
 #include <QStyle>
+#include <QSystemTrayIcon>
+
 #include "copya.h"
 
 int main(int argc, char *argv[])
@@ -17,7 +18,8 @@ int main(int argc, char *argv[])
 
     // 使用Qt内置图标（选择一种）
     // 方法1：使用QStyle的标准图标
-    trayIcon->setIcon(QApplication::style()->standardIcon(QStyle::SP_ComputerIcon));
+    trayIcon->setIcon(
+        QApplication::style()->standardIcon(QStyle::SP_ComputerIcon));
     // 或者使用其他内置图标：
     // SP_MessageBoxInformation 信息图标
     // SP_FileIcon 文件图标
@@ -42,20 +44,28 @@ int main(int argc, char *argv[])
     QObject::connect(quitAction, &QAction::triggered, &a, &QApplication::quit);
 
     // 托盘图标点击事件
-    QObject::connect(trayIcon, &QSystemTrayIcon::activated, [&w](QSystemTrayIcon::ActivationReason reason){
-        if (reason == QSystemTrayIcon::DoubleClick || reason == QSystemTrayIcon::Trigger) {
-            if (w.isVisible()) {
-                w.hide();
-            } else {
-                w.show();
-                w.activateWindow();
-                w.raise();
-            }
-        }
-    });
+    QObject::connect(trayIcon, &QSystemTrayIcon::activated,
+                     [&w](QSystemTrayIcon::ActivationReason reason)
+                     {
+                         if (reason == QSystemTrayIcon::DoubleClick ||
+                             reason == QSystemTrayIcon::Trigger)
+                         {
+                             if (w.isVisible())
+                             {
+                                 w.hide();
+                             }
+                             else
+                             {
+                                 w.show();
+                                 w.activateWindow();
+                                 w.raise();
+                             }
+                         }
+                     });
 
     trayIcon->show();
-    trayIcon->showMessage("Copya", "程序已启动，可通过托盘图标控制", QSystemTrayIcon::Information, 3000);
+    trayIcon->showMessage("Copya", "程序已启动，可通过托盘图标控制",
+                          QSystemTrayIcon::Information, 3000);
 
     return a.exec();
 }

@@ -7,9 +7,9 @@
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QShortcut>
 #include <QTreeWidget>
 #include <QVBoxLayout>
-#include <QShortcut>
 
 #include "clipboard.h"
 #include "database.h"
@@ -73,6 +73,5 @@ private slots:
 
 public slots:
     void toggleWindowVisibility();
-
 };
 #endif  // COPYA_H
