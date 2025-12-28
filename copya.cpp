@@ -30,6 +30,11 @@ Copya::Copya(QWidget *parent)
     }
 
     ui->setupUi(this);
+    // 设置按ESC键隐藏窗口
+    this->setAttribute(Qt::WA_DeleteOnClose);
+
+    // 程序启动时隐藏窗口（默认隐藏）
+    this->hide();
 
     ui->treeWidget->setColumnCount(2);
     QStringList headers;
@@ -85,6 +90,10 @@ Copya::Copya(QWidget *parent)
     // 连接树形控件当前项目改变的信号
     connect(ui->treeWidget, &QTreeWidget::currentItemChanged, this,
             &Copya::onTreeWidgetCurrentItemChanged);
+
+    // 创建全局快捷键（例如 Ctrl+Shift+` 显示/隐藏窗口）
+    QShortcut *showHideShortcut = new QShortcut(QKeySequence("Ctrl+Shift+`"), this);
+    connect(showHideShortcut, &QShortcut::activated, this, &Copya::toggleWindowVisibility);
 
     loadData();
 }
@@ -413,9 +422,19 @@ bool Copya::eventFilter(QObject *watched, QEvent *event)
         }
     }
 
+    // 添加 ESC 键隐藏窗口的处理（全局）
+    if (event->type() == QEvent::KeyPress)
+    {
+        QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->key() == Qt::Key_Escape)
+        {
+            this->hide();
+            return true;
+        }
+    }
+
     return QMainWindow::eventFilter(watched, event);
 }
-
 void Copya::togglePlainTextEditVisibility()
 {
     plainTextEditVisible = !plainTextEditVisible;
@@ -437,7 +456,12 @@ void Copya::closeEvent(QCloseEvent *event)
     // 保存最后编辑的内容
     saveCurrentEdit();
 
-    QMainWindow::closeEvent(event);
+    // 不关闭程序，只是隐藏窗口
+    this->hide();
+    event->ignore();
+
+    // 如果需要真正退出，可以在托盘菜单中提供退出选项
+    // QMainWindow::closeEvent(event);
 }
 
 void Copya::loadData()
@@ -710,5 +734,19 @@ void Copya::onDeleteSelected()
         {
             QMessageBox::warning(this, "错误", "删除项目失败！");
         }
+    }
+}
+
+void Copya::toggleWindowVisibility()
+{
+    if (this->isVisible())
+    {
+        this->hide();
+    }
+    else
+    {
+        this->show();
+        this->activateWindow();  // 激活窗口
+        this->raise();           // 将窗口置于顶层
     }
 }

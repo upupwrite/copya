@@ -9,6 +9,7 @@
 #include <QPushButton>
 #include <QTreeWidget>
 #include <QVBoxLayout>
+#include <QShortcut>
 
 #include "clipboard.h"
 #include "database.h"
@@ -69,5 +70,9 @@ private:
 private slots:
     void onTreeWidgetCurrentItemChanged(QTreeWidgetItem *current,
                                         QTreeWidgetItem *previous);
+
+public slots:
+    void toggleWindowVisibility();
+
 };
 #endif  // COPYA_H
