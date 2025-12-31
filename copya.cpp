@@ -17,6 +17,11 @@ Copya::Copya(QWidget *parent)
       currentEditingId(-1),
       isManualEdit(false)
 {
+    ui->setupUi(this);
+}
+
+void Copya::init()
+{
     // 初始化数据库
     database = new ClipDatabase();
     monitor = new Monitor();
@@ -29,7 +34,6 @@ Copya::Copya(QWidget *parent)
         return;
     }
 
-    ui->setupUi(this);
     // 设置按ESC键隐藏窗口
     this->setAttribute(Qt::WA_DeleteOnClose);
 
@@ -90,12 +94,6 @@ Copya::Copya(QWidget *parent)
     // 连接树形控件当前项目改变的信号
     connect(ui->treeWidget, &QTreeWidget::currentItemChanged, this,
             &Copya::onTreeWidgetCurrentItemChanged);
-
-    // 创建全局快捷键（例如 Ctrl+Shift+` 显示/隐藏窗口）
-    //    QShortcut *showHideShortcut = new
-    //    QShortcut(QKeySequence("Ctrl+Shift+`"), this);
-    //    connect(showHideShortcut, &QShortcut::activated, this,
-    //    &Copya::toggleWindowVisibility);
 
     loadData();
 }
@@ -736,19 +734,5 @@ void Copya::onDeleteSelected()
         {
             QMessageBox::warning(this, "错误", "删除项目失败！");
         }
-    }
-}
-
-void Copya::toggleWindowVisibility()
-{
-    if (this->isVisible())
-    {
-        this->hide();
-    }
-    else
-    {
-        this->show();
-        this->activateWindow();  // 激活窗口
-        this->raise();           // 将窗口置于顶层
     }
 }

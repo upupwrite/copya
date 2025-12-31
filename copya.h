@@ -28,6 +28,7 @@ class Copya : public QMainWindow
 public:
     explicit Copya(QWidget *parent = nullptr);
     ~Copya();
+    void init();
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -70,8 +71,5 @@ private:
 private slots:
     void onTreeWidgetCurrentItemChanged(QTreeWidgetItem *current,
                                         QTreeWidgetItem *previous);
-
-public slots:
-    void toggleWindowVisibility();
 };
 #endif  // COPYA_H

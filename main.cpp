@@ -1,6 +1,12 @@
 #include <QAction>
 #include <QApplication>
+#include <QCommandLineOption>
+#include <QCommandLineParser>
+#include <QDir>
+#include <QLocalServer>
+#include <QLocalSocket>
 #include <QMenu>
+#include <QMessageBox>
 #include <QStyle>
 #include <QSystemTrayIcon>
 
@@ -10,24 +16,124 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
-    // 创建主窗口但不显示
+    // 设置应用程序信息
+    QApplication::setApplicationName("Copya");
+    QApplication::setApplicationVersion("1.0.0");
+    QApplication::setOrganizationName("Copya");
+
+    // 解析命令行参数
+    QCommandLineParser parser;
+    parser.setApplicationDescription("Copya - 剪贴板管理工具");
+    parser.addHelpOption();
+    parser.addVersionOption();
+
+    QCommandLineOption menuOption(QStringList() << "m" << "menu",
+                                  "显示或隐藏应用程序窗口");
+    parser.addOption(menuOption);
+
+    parser.process(a);
+
+    // 单实例检测 - 使用唯一名称
+    QString serverName = "copya_app" + QDir::homePath().replace("/", "_");
+    QLocalSocket socket;
+    socket.connectToServer(serverName);
+
+    // 如果已经有实例运行
+    bool isFirstInstance = false;
+    if (socket.waitForConnected(500))
+    {
+        // 处理--menu参数
+        if (parser.isSet(menuOption))
+        {
+            socket.write("toggle");
+        }
+        else
+        {
+            socket.write("activate");
+        }
+        socket.waitForBytesWritten(1000);
+        socket.close();
+
+        // 无论是否有--menu参数，都不启动新实例，直接退出
+        return 0;
+    }
+    else
+    {
+        isFirstInstance = true;
+    }
+    socket.close();
+
+    // 如果没有已有实例，正常启动程序
+
+    // 创建本地服务器用于进程间通信
+    QLocalServer server;
+    if (!server.listen(serverName))
+    {
+        QLocalServer::removeServer(serverName);
+        if (!server.listen(serverName))
+        {
+            qWarning() << "Cannot start single instance server";
+            return -1;
+        }
+    }
+
+    // 创建主窗口但不立即显示
     Copya w;
+    if (isFirstInstance)
+    {
+        w.init();
+    }
+
+    // 连接服务器信号
+    QObject::connect(
+        &server, &QLocalServer::newConnection, &w,
+        [&server, &w]()
+        {
+            QLocalSocket *clientSocket = server.nextPendingConnection();
+            if (!clientSocket)
+                return;
+
+            QObject::connect(clientSocket, &QLocalSocket::readyRead,
+                             [&w, clientSocket]()
+                             {
+                                 QByteArray data = clientSocket->readAll();
+                                 if (data == "toggle")
+                                 {
+                                     if (w.isVisible())
+                                     {
+                                         w.hide();
+                                     }
+                                     else
+                                     {
+                                         w.show();
+                                         w.activateWindow();
+                                         w.raise();
+                                     }
+                                 }
+                                 else if (data == "activate")
+                                 {
+                                     w.show();
+                                     w.activateWindow();
+                                     w.raise();
+                                 }
+                                 clientSocket->close();
+                                 clientSocket->deleteLater();
+                             });
+        });
+
+    // 如果使用--menu参数启动，第一次启动时显示窗口
+    // 如果没有--menu参数，窗口保持隐藏（只显示托盘）
+    if (parser.isSet(menuOption))
+    {
+        w.show();
+    }
 
     // 创建系统托盘图标
     QSystemTrayIcon *trayIcon = new QSystemTrayIcon(&w);
 
-    // 使用Qt内置图标（选择一种）
-    // 方法1：使用QStyle的标准图标
+    // 使用Qt内置图标
     trayIcon->setIcon(
         QApplication::style()->standardIcon(QStyle::SP_ComputerIcon));
-    // 或者使用其他内置图标：
-    // SP_MessageBoxInformation 信息图标
-    // SP_FileIcon 文件图标
-    // SP_DirIcon 文件夹图标
-    // SP_DriveHDIcon 硬盘图标
-
-    // 方法2：使用QIcon的fromTheme（如果系统有图标主题）
-    // trayIcon->setIcon(QIcon::fromTheme("edit-copy")); // 复制图标
 
     // 创建托盘菜单
     QMenu *trayMenu = new QMenu();
