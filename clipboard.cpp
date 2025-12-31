@@ -150,13 +150,29 @@ bool setClipboardWithWlCopy(const std::string &text)
         return false;
     }
 
-    // 写入文本到 wl-copy 的标准输入
     size_t written = fwrite(text.c_str(), 1, text.length(), pipe);
-    fclose(pipe);
+
+    int status = pclose(pipe);
 
     if (written != text.length())
     {
         std::cerr << "Failed to write all text to clipboard!" << std::endl;
+        return false;
+    }
+
+    if (WIFEXITED(status))
+    {
+        int exit_code = WEXITSTATUS(status);
+        if (exit_code != 0)
+        {
+            std::cerr << "wl-copy exited with error code: " << exit_code
+                      << std::endl;
+            return false;
+        }
+    }
+    else
+    {
+        std::cerr << "wl-copy did not exit normally!" << std::endl;
         return false;
     }
 
