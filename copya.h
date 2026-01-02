@@ -56,7 +56,7 @@ private:
     Ui::Copya *ui;
     ClipDatabase *database;
     Monitor *monitor;
-    QWidget *widget_3=findChild<QWidget*>("widget_3");
+    QWidget *widget_3 = findChild<QWidget *>("widget_3");
 
 private slots:
     void onPlainTextEditChanged();
@@ -91,10 +91,8 @@ private:
     QVector<std::tuple<int, QString, int, QString>> getDataByMark(int mark);
 
     // 辅助函数：将数据库返回的vector转换为QVector
-    QVector<std::tuple<int, QString, int, QString>>
-    convertToQtVector(const std::vector<std::tuple<int, std::string, int, std::string>>& dbVector);
-
-
-
+    QVector<std::tuple<int, QString, int, QString>> convertToQtVector(
+        const std::vector<std::tuple<int, std::string, int, std::string>>
+            &dbVector);
 };
 #endif  // COPYA_H

@@ -779,7 +779,7 @@ int ClipDatabase::setLabel(const std::string &label)
         return -1;
     }
 
-    int newMark = 1;
+    int newMark = 2;
     if (sqlite3_step(stmt) == SQLITE_ROW)
     {
         newMark = sqlite3_column_int(stmt, 0) + 1;
@@ -1134,8 +1134,6 @@ bool ClipDatabase::updateTimestampById(int id)
     return true;
 }
 
-
-
 bool ClipDatabase::deleteMark(int mark)
 {
     if (!db)
@@ -1150,7 +1148,8 @@ bool ClipDatabase::deleteMark(int mark)
     if (rc != SQLITE_OK)
     {
         logError("开始事务", errMsg ? errMsg : "未知错误");
-        if (errMsg) sqlite3_free(errMsg);
+        if (errMsg)
+            sqlite3_free(errMsg);
         return false;
     }
 
@@ -1209,7 +1208,8 @@ bool ClipDatabase::deleteMark(int mark)
         if (rc != SQLITE_OK)
         {
             logError("提交事务", errMsg ? errMsg : "未知错误");
-            if (errMsg) sqlite3_free(errMsg);
+            if (errMsg)
+                sqlite3_free(errMsg);
             success = false;
         }
         else
@@ -1224,4 +1224,3 @@ bool ClipDatabase::deleteMark(int mark)
 
     return success;
 }
-
