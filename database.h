@@ -65,5 +65,28 @@ public:
     std::vector<std::tuple<int, std::string, int, std::string>> searchText(
         const std::string &searchTerm, bool caseSensitive = false,
         bool exactMatch = false);
+
+    // 设置标签文本，自动分配mark并返回
+    int setLabel(const std::string &label);
+
+    // 设置项目的mark
+    bool setMark(int id, int mark);
+
+    // 载入最新的N条项目
+    std::vector<std::tuple<int, std::string, int, std::string>> readRecentData(
+        int limit = 150);
+
+    // 获取mark对应的所有项目
+    std::vector<std::tuple<int, std::string, int, std::string>> getDataByMark(
+        int mark);
+
+    // 读取所有mark和对应的标签文本
+    std::vector<std::pair<int, std::string>> getAllMarksAndLabels();
+
+    // 更新标签文本
+    bool updateLabel(int mark, const std::string &newLabel);
+
+    // 更新id的时间戳（修复现有问题）
+    bool updateTimestampById(int id);
 };
 #endif  // DATABASE_H

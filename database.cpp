@@ -115,7 +115,7 @@ ClipDatabase::ClipDatabase(const std::string &databaseName) : db(nullptr)
         logError("启用外键约束", sqlite3_errmsg(db));
     }
 
-    // 创建表
+    // 在构造函数中修改建表语句
     const char *sql =
         "CREATE TABLE IF NOT EXISTS texts ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -124,11 +124,19 @@ ClipDatabase::ClipDatabase(const std::string &databaseName) : db(nullptr)
         "created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
         "updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
 
+        "CREATE TABLE IF NOT EXISTS marks ("
+        "mark INTEGER PRIMARY KEY, "
+        "label TEXT NOT NULL, "
+        "created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
+
         "CREATE INDEX IF NOT EXISTS idx_texts_created_time "
         "ON texts(created_time);"
 
         "CREATE INDEX IF NOT EXISTS idx_texts_mark "
-        "ON texts(mark);";
+        "ON texts(mark);"
+
+        "CREATE INDEX IF NOT EXISTS idx_marks_label "
+        "ON marks(label);";
 
     char *errMsg = nullptr;
     rc = sqlite3_exec(db, sql, nullptr, nullptr, &errMsg);
@@ -371,52 +379,8 @@ ClipDatabase::readAllData()
     return results;
 }
 
-// 根据ID设置标记
-bool ClipDatabase::setMarkById(int id, int mark)
-{
-    if (!db)
-    {
-        logError("设置标记(ID)", "数据库未打开");
-        return false;
-    }
-
-    sqlite3_stmt *stmt = nullptr;
-    std::string sql =
-        "UPDATE texts SET mark = ?, updated_time = CURRENT_TIMESTAMP "
-        "WHERE id = ?;";
-
-    int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
-    if (rc != SQLITE_OK)
-    {
-        logError("准备更新标记语句", sqlite3_errmsg(db));
-        return false;
-    }
-
-    sqlite3_bind_int(stmt, 1, mark);
-    sqlite3_bind_int(stmt, 2, id);
-
-    rc = sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
-
-    if (rc != SQLITE_DONE)
-    {
-        logError("执行更新标记", sqlite3_errmsg(db));
-        return false;
-    }
-
-    int changes = sqlite3_changes(db);
-    if (changes == 0)
-    {
-        logError("设置标记(ID)",
-                 "未找到ID为 " + std::to_string(id) + " 的记录");
-        return false;
-    }
-
-    logSuccess("设置标记(ID: " + std::to_string(id) +
-               ", Mark: " + std::to_string(mark) + ")");
-    return true;
-}
-
+// 根据ID设置标记（调用新的setMark函数）
+bool ClipDatabase::setMarkById(int id, int mark) { return setMark(id, mark); }
 // 根据文本内容设置标记
 bool ClipDatabase::setMarkByText(const std::string &text, int mark)
 {
@@ -763,4 +727,409 @@ std::string ClipDatabase::escapeLikePattern(const std::string &pattern) const
     }
 
     return escaped;
+}
+
+// 设置标签文本，自动分配mark并返回
+int ClipDatabase::setLabel(const std::string &label)
+{
+    if (!db)
+    {
+        logError("设置标签", "数据库未打开");
+        return -1;
+    }
+
+    if (label.empty())
+    {
+        logError("设置标签", "标签文本为空");
+        return -1;
+    }
+
+    // 首先检查标签是否已存在
+    sqlite3_stmt *stmt = nullptr;
+    std::string sql = "SELECT mark FROM marks WHERE label = ?;";
+
+    int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    if (rc != SQLITE_OK)
+    {
+        logError("准备查询标签语句", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, label.c_str(), -1, SQLITE_TRANSIENT);
+
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        // 标签已存在，返回现有的mark
+        int existingMark = sqlite3_column_int(stmt, 0);
+        sqlite3_finalize(stmt);
+        logSuccess("标签已存在 (Mark: " + std::to_string(existingMark) +
+                   ", Label: \"" + label + "\")");
+        return existingMark;
+    }
+
+    sqlite3_finalize(stmt);
+
+    // 标签不存在，自动分配新的mark
+    // 查找当前最大的mark
+    sql = "SELECT COALESCE(MAX(mark), 0) FROM marks;";
+    rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    if (rc != SQLITE_OK)
+    {
+        logError("准备查询最大mark语句", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    int newMark = 1;
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        newMark = sqlite3_column_int(stmt, 0) + 1;
+    }
+    sqlite3_finalize(stmt);
+
+    // 插入新的标签
+    sql = "INSERT INTO marks (mark, label) VALUES (?, ?);";
+    rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    if (rc != SQLITE_OK)
+    {
+        logError("准备插入标签语句", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    sqlite3_bind_int(stmt, 1, newMark);
+    sqlite3_bind_text(stmt, 2, label.c_str(), -1, SQLITE_TRANSIENT);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (rc != SQLITE_DONE)
+    {
+        logError("执行插入标签", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    logSuccess("设置标签 (Mark: " + std::to_string(newMark) + ", Label: \"" +
+               label + "\")");
+    return newMark;
+}
+
+// 设置项目的mark（修复现有问题）
+bool ClipDatabase::setMark(int id, int mark)
+{
+    if (!db)
+    {
+        logError("设置项目mark", "数据库未打开");
+        return false;
+    }
+
+    // 检查mark是否存在于marks表中
+    sqlite3_stmt *stmt = nullptr;
+    std::string sql = "SELECT 1 FROM marks WHERE mark = ?;";
+
+    int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    if (rc != SQLITE_OK)
+    {
+        logError("准备检查mark语句", sqlite3_errmsg(db));
+        return false;
+    }
+
+    sqlite3_bind_int(stmt, 1, mark);
+
+    if (sqlite3_step(stmt) != SQLITE_ROW)
+    {
+        sqlite3_finalize(stmt);
+        logError("设置项目mark",
+                 "mark " + std::to_string(mark) + " 不存在于marks表中");
+        return false;
+    }
+
+    sqlite3_finalize(stmt);
+
+    // 更新texts表中的mark
+    sql =
+        "UPDATE texts SET mark = ?, updated_time = CURRENT_TIMESTAMP WHERE id "
+        "= ?;";
+
+    rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    if (rc != SQLITE_OK)
+    {
+        logError("准备更新mark语句", sqlite3_errmsg(db));
+        return false;
+    }
+
+    sqlite3_bind_int(stmt, 1, mark);
+    sqlite3_bind_int(stmt, 2, id);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (rc != SQLITE_DONE)
+    {
+        logError("执行更新mark", sqlite3_errmsg(db));
+        return false;
+    }
+
+    int changes = sqlite3_changes(db);
+    if (changes == 0)
+    {
+        logError("设置项目mark",
+                 "未找到ID为 " + std::to_string(id) + " 的记录");
+        return false;
+    }
+
+    logSuccess("设置项目mark (ID: " + std::to_string(id) +
+               ", Mark: " + std::to_string(mark) + ")");
+    return true;
+}
+
+// 载入最新的N条项目
+std::vector<std::tuple<int, std::string, int, std::string>>
+ClipDatabase::readRecentData(int limit)
+{
+    std::vector<std::tuple<int, std::string, int, std::string>> results;
+
+    if (!db)
+    {
+        logError("读取最近数据", "数据库未打开");
+        return results;
+    }
+
+    std::string sql =
+        "SELECT id, text_content, mark, created_time "
+        "FROM texts ORDER BY created_time DESC LIMIT ?;";
+
+    sqlite3_stmt *stmt = nullptr;
+
+    int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    if (rc != SQLITE_OK)
+    {
+        logError("准备读取最近数据语句", sqlite3_errmsg(db));
+        return results;
+    }
+
+    sqlite3_bind_int(stmt, 1, limit);
+
+    int count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        int id = sqlite3_column_int(stmt, 0);
+        const unsigned char *text = sqlite3_column_text(stmt, 1);
+        std::string textStr = text ? reinterpret_cast<const char *>(text) : "";
+        int mark = sqlite3_column_int(stmt, 2);
+        const unsigned char *time = sqlite3_column_text(stmt, 3);
+        std::string timeStr = time ? reinterpret_cast<const char *>(time) : "";
+
+        results.emplace_back(id, textStr, mark, timeStr);
+        count++;
+    }
+
+    sqlite3_finalize(stmt);
+
+    if (count > 0)
+    {
+        logSuccess("读取最近数据 (" + std::to_string(count) + "条)");
+    }
+
+    return results;
+}
+
+// 获取mark对应的所有项目
+std::vector<std::tuple<int, std::string, int, std::string>>
+ClipDatabase::getDataByMark(int mark)
+{
+    std::vector<std::tuple<int, std::string, int, std::string>> results;
+
+    if (!db)
+    {
+        logError("获取mark数据", "数据库未打开");
+        return results;
+    }
+
+    std::string sql =
+        "SELECT id, text_content, mark, created_time "
+        "FROM texts WHERE mark = ? ORDER BY created_time DESC;";
+
+    sqlite3_stmt *stmt = nullptr;
+
+    int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    if (rc != SQLITE_OK)
+    {
+        logError("准备获取mark数据语句", sqlite3_errmsg(db));
+        return results;
+    }
+
+    sqlite3_bind_int(stmt, 1, mark);
+
+    int count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        int id = sqlite3_column_int(stmt, 0);
+        const unsigned char *text = sqlite3_column_text(stmt, 1);
+        std::string textStr = text ? reinterpret_cast<const char *>(text) : "";
+        int currentMark = sqlite3_column_int(stmt, 2);
+        const unsigned char *time = sqlite3_column_text(stmt, 3);
+        std::string timeStr = time ? reinterpret_cast<const char *>(time) : "";
+
+        results.emplace_back(id, textStr, currentMark, timeStr);
+        count++;
+    }
+
+    sqlite3_finalize(stmt);
+
+    if (count > 0)
+    {
+        logSuccess("获取mark数据 (Mark: " + std::to_string(mark) + ", " +
+                   std::to_string(count) + "条)");
+    }
+
+    return results;
+}
+
+// 读取所有mark和对应的标签文本
+std::vector<std::pair<int, std::string>> ClipDatabase::getAllMarksAndLabels()
+{
+    std::vector<std::pair<int, std::string>> results;
+
+    if (!db)
+    {
+        logError("读取所有marks", "数据库未打开");
+        return results;
+    }
+
+    std::string sql = "SELECT mark, label FROM marks ORDER BY mark ASC;";
+
+    sqlite3_stmt *stmt = nullptr;
+
+    int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    if (rc != SQLITE_OK)
+    {
+        logError("准备读取marks语句", sqlite3_errmsg(db));
+        return results;
+    }
+
+    int count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        int mark = sqlite3_column_int(stmt, 0);
+        const unsigned char *label = sqlite3_column_text(stmt, 1);
+        std::string labelStr =
+            label ? reinterpret_cast<const char *>(label) : "";
+
+        results.emplace_back(mark, labelStr);
+        count++;
+    }
+
+    sqlite3_finalize(stmt);
+
+    if (count > 0)
+    {
+        logSuccess("读取所有marks (" + std::to_string(count) + "条)");
+    }
+
+    return results;
+}
+
+// 更新标签文本
+bool ClipDatabase::updateLabel(int mark, const std::string &newLabel)
+{
+    if (!db)
+    {
+        logError("更新标签", "数据库未打开");
+        return false;
+    }
+
+    if (newLabel.empty())
+    {
+        logError("更新标签", "新标签文本为空");
+        return false;
+    }
+
+    // 检查mark是否存在
+    sqlite3_stmt *stmt = nullptr;
+    std::string sql = "SELECT 1 FROM marks WHERE mark = ?;";
+
+    int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    if (rc != SQLITE_OK)
+    {
+        logError("准备检查mark语句", sqlite3_errmsg(db));
+        return false;
+    }
+
+    sqlite3_bind_int(stmt, 1, mark);
+
+    if (sqlite3_step(stmt) != SQLITE_ROW)
+    {
+        sqlite3_finalize(stmt);
+        logError("更新标签", "mark " + std::to_string(mark) + " 不存在");
+        return false;
+    }
+
+    sqlite3_finalize(stmt);
+
+    // 更新标签文本
+    sql = "UPDATE marks SET label = ? WHERE mark = ?;";
+
+    rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    if (rc != SQLITE_OK)
+    {
+        logError("准备更新标签语句", sqlite3_errmsg(db));
+        return false;
+    }
+
+    sqlite3_bind_text(stmt, 1, newLabel.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 2, mark);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (rc != SQLITE_DONE)
+    {
+        logError("执行更新标签", sqlite3_errmsg(db));
+        return false;
+    }
+
+    logSuccess("更新标签 (Mark: " + std::to_string(mark) + ", New Label: \"" +
+               newLabel + "\")");
+    return true;
+}
+
+// 修复更新id的时间戳函数
+bool ClipDatabase::updateTimestampById(int id)
+{
+    if (!db)
+    {
+        logError("更新时间戳", "数据库未打开");
+        return false;
+    }
+
+    sqlite3_stmt *stmt = nullptr;
+    std::string sql =
+        "UPDATE texts SET updated_time = CURRENT_TIMESTAMP WHERE id = ?;";
+
+    int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    if (rc != SQLITE_OK)
+    {
+        logError("准备更新时间戳语句", sqlite3_errmsg(db));
+        return false;
+    }
+
+    sqlite3_bind_int(stmt, 1, id);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (rc != SQLITE_DONE)
+    {
+        logError("执行更新时间戳", sqlite3_errmsg(db));
+        return false;
+    }
+
+    int changes = sqlite3_changes(db);
+    if (changes == 0)
+    {
+        logError("更新时间戳", "未找到ID为 " + std::to_string(id) + " 的记录");
+        return false;
+    }
+
+    logSuccess("更新时间戳 (ID: " + std::to_string(id) + ")");
+    return true;
 }
