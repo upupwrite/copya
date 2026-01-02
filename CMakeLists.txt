@@ -22,6 +22,11 @@ set(PROJECT_SOURCES
         database.h
         clipboard.cpp
         clipboard.h
+        setting.cpp
+        setting.h
+        setting.ui
+        icon.qrc
+
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
