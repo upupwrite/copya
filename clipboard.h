@@ -33,7 +33,7 @@ private:
     std::mutex clipboardMutex;       // 互斥锁
     std::atomic<bool> isMonitoring;  // 监控状态
 
-    ClipDatabase db;  // 数据库实例
+    ClipDatabase *database;  // 数据库实例
 };
 
 bool setClipboardWithWlCopy(const std::string &text);

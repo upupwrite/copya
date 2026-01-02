@@ -1234,3 +1234,50 @@ bool ClipDatabase::deleteMark(int mark)
 
     return success;
 }
+
+std::string ClipDatabase::readLatestText()
+{
+    std::string result;
+
+    if (!db)
+    {
+        logError("读取最新文本", "数据库未打开");
+        return result;
+    }
+
+    std::string sql =
+        "SELECT text_content "
+        "FROM texts ORDER BY created_time DESC LIMIT 1;";
+
+    sqlite3_stmt *stmt = nullptr;
+
+    int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    if (rc != SQLITE_OK)
+    {
+        logError("准备读取最新文本语句", sqlite3_errmsg(db));
+        return result;
+    }
+
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        const unsigned char *text = sqlite3_column_text(stmt, 0);
+        result = text ? reinterpret_cast<const char *>(text) : "";
+
+        if (!result.empty())
+        {
+            logSuccess("读取最新文本成功");
+        }
+        else
+        {
+            logSuccess("数据库为空，无最新文本");
+        }
+    }
+    else
+    {
+        logSuccess("数据库为空，无最新文本");
+    }
+
+    sqlite3_finalize(stmt);
+
+    return result;
+}

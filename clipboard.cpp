@@ -5,11 +5,12 @@
 #include <iostream>
 
 Monitor::Monitor(QObject *parent)
-    : QObject(parent), shouldStop(false), isMonitoring(false)
+    : QObject(parent), shouldStop(false), isMonitoring(false), database(nullptr)
 {
     std::cout
         << "Clipboard Monitor initialized. Use start() to begin monitoring."
         << std::endl;
+    database = new ClipDatabase();
 }
 
 Monitor::~Monitor()
@@ -68,8 +69,9 @@ bool Monitor::isRunning() { return isMonitoring.load(); }
 
 void Monitor::monitoringLoop()
 {
-    std::string previous_text;
+    std::string previous_text = database->readLatestText();
     int empty_count = 0;
+    bool was_sleeping = false;  // 标记是否刚从休眠恢复
 
     while (!shouldStop.load())
     {
@@ -91,13 +93,68 @@ void Monitor::monitoringLoop()
             current_text += buffer;
         }
 
-        pclose(pipe);
+        int status = pclose(pipe);
+
+        // 检查命令是否成功执行
+        bool command_failed = false;
+        if (WIFEXITED(status))
+        {
+            int exit_code = WEXITSTATUS(status);
+            if (exit_code != 0)
+            {
+                // wl-paste 可能因系统休眠而失败
+                command_failed = true;
+                was_sleeping = true;
+            }
+        }
+        else
+        {
+            command_failed = true;
+            was_sleeping = true;
+        }
 
         // 移除末尾换行符
         while (!current_text.empty() &&
                (current_text.back() == '\n' || current_text.back() == '\r'))
         {
             current_text.pop_back();
+        }
+
+        // 如果命令执行失败，认为是休眠状态，跳过本次检查
+        if (command_failed)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            continue;
+        }
+
+        // 检查是否刚从休眠恢复
+        if (was_sleeping)
+        {
+            // 休眠恢复后，重新获取当前剪贴板内容
+            previous_text = current_text;
+            was_sleeping = false;
+
+            // 休眠恢复后，如果剪贴板不为空且与数据库最新记录不同，则保存
+            if (!current_text.empty() &&
+                current_text != database->readLatestText())
+            {
+                std::cout << "\n[Clipboard] Resumed from sleep - Recording "
+                             "current content:"
+                          << std::endl;
+                std::cout << "----------------------------------------"
+                          << std::endl;
+                std::cout << current_text << std::endl;
+                database->writeText(current_text);
+                std::cout << "Saved to database after sleep" << std::endl;
+                std::cout << "----------------------------------------"
+                          << std::endl;
+                previous_text = current_text;
+                empty_count = 0;
+                emit clipTextChanged();
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            continue;
         }
 
         // 检查是否变化
@@ -109,7 +166,7 @@ void Monitor::monitoringLoop()
                 std::cout << "----------------------------------------"
                           << std::endl;
                 std::cout << current_text << std::endl;
-                db.writeText(current_text);
+                database->writeText(current_text);
                 std::cout << "Saved to database" << std::endl;
                 std::cout << "----------------------------------------"
                           << std::endl;
@@ -117,7 +174,7 @@ void Monitor::monitoringLoop()
                 empty_count = 0;
                 emit clipTextChanged();
             }
-            else if (previous_text != "" && ++empty_count <= 1)
+            else if (!previous_text.empty() && ++empty_count <= 1)
             {
                 // 剪贴板变空时也记录一次
                 std::cout << "\n[Clipboard] Cleared" << std::endl;

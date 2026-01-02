@@ -91,5 +91,8 @@ public:
 
     // 删除标签
     bool deleteMark(int mark);
+
+    // 获取最新的文本
+    std::string readLatestText();
 };
 #endif  // DATABASE_H
