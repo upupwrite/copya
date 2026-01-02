@@ -821,35 +821,45 @@ bool ClipDatabase::setMark(int id, int mark)
         return false;
     }
 
-    // 检查mark是否存在于marks表中
-    sqlite3_stmt *stmt = nullptr;
-    std::string sql = "SELECT 1 FROM marks WHERE mark = ?;";
-
-    int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
-    if (rc != SQLITE_OK)
+    // 当mark为0或1时，跳过marks表检查（特殊值）
+    if (mark != 0 && mark != 1)
     {
-        logError("准备检查mark语句", sqlite3_errmsg(db));
-        return false;
-    }
+        // 检查mark是否存在于marks表中
+        sqlite3_stmt *stmt = nullptr;
+        std::string sql = "SELECT 1 FROM marks WHERE mark = ?;";
 
-    sqlite3_bind_int(stmt, 1, mark);
+        int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+        if (rc != SQLITE_OK)
+        {
+            logError("准备检查mark语句", sqlite3_errmsg(db));
+            return false;
+        }
 
-    if (sqlite3_step(stmt) != SQLITE_ROW)
-    {
+        sqlite3_bind_int(stmt, 1, mark);
+
+        if (sqlite3_step(stmt) != SQLITE_ROW)
+        {
+            sqlite3_finalize(stmt);
+            logError("设置项目mark",
+                     "mark " + std::to_string(mark) + " 不存在于marks表中");
+            return false;
+        }
+
         sqlite3_finalize(stmt);
-        logError("设置项目mark",
-                 "mark " + std::to_string(mark) + " 不存在于marks表中");
-        return false;
     }
-
-    sqlite3_finalize(stmt);
+    else
+    {
+        // mark为0或1时，记录特殊值跳过检查
+        logSuccess("使用特殊mark值 " + std::to_string(mark) + "（跳过检查）");
+    }
 
     // 更新texts表中的mark
-    sql =
+    std::string sql =
         "UPDATE texts SET mark = ?, updated_time = CURRENT_TIMESTAMP WHERE id "
         "= ?;";
 
-    rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    sqlite3_stmt *stmt = nullptr;
+    int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
     if (rc != SQLITE_OK)
     {
         logError("准备更新mark语句", sqlite3_errmsg(db));
