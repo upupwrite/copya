@@ -736,3 +736,14 @@ void Copya::onDeleteSelected()
         }
     }
 }
+
+void Copya::hideEvent(QHideEvent *event)
+{
+    // TODO:似乎不起作用
+    //  保存最后编辑的内容
+    saveCurrentEdit();
+
+    // 不关闭程序，只是隐藏窗口
+    this->hide();
+    event->ignore();
+}
