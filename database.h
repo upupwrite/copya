@@ -88,5 +88,8 @@ public:
 
     // 更新id的时间戳（修复现有问题）
     bool updateTimestampById(int id);
+
+    // 删除标签
+    bool deleteMark(int mark);
 };
 #endif  // DATABASE_H

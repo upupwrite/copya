@@ -1133,3 +1133,95 @@ bool ClipDatabase::updateTimestampById(int id)
     logSuccess("更新时间戳 (ID: " + std::to_string(id) + ")");
     return true;
 }
+
+
+
+bool ClipDatabase::deleteMark(int mark)
+{
+    if (!db)
+    {
+        logError("删除mark", "数据库未打开");
+        return false;
+    }
+
+    // 开始事务
+    char *errMsg = nullptr;
+    int rc = sqlite3_exec(db, "BEGIN TRANSACTION;", nullptr, nullptr, &errMsg);
+    if (rc != SQLITE_OK)
+    {
+        logError("开始事务", errMsg ? errMsg : "未知错误");
+        if (errMsg) sqlite3_free(errMsg);
+        return false;
+    }
+
+    bool success = true;
+
+    // 1. 将texts表中所有该mark设置为0
+    std::string sql = "UPDATE texts SET mark = 0 WHERE mark = ?;";
+    sqlite3_stmt *stmt = nullptr;
+
+    rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    if (rc != SQLITE_OK)
+    {
+        logError("准备更新语句", sqlite3_errmsg(db));
+        sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        return false;
+    }
+
+    sqlite3_bind_int(stmt, 1, mark);
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (rc != SQLITE_DONE)
+    {
+        logError("执行更新", sqlite3_errmsg(db));
+        success = false;
+    }
+
+    // 2. 删除marks表中的记录
+    if (success)
+    {
+        sql = "DELETE FROM marks WHERE mark = ?;";
+        rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+        if (rc != SQLITE_OK)
+        {
+            logError("准备删除语句", sqlite3_errmsg(db));
+            success = false;
+        }
+        else
+        {
+            sqlite3_bind_int(stmt, 1, mark);
+            rc = sqlite3_step(stmt);
+            sqlite3_finalize(stmt);
+
+            if (rc != SQLITE_DONE)
+            {
+                logError("执行删除", sqlite3_errmsg(db));
+                success = false;
+            }
+        }
+    }
+
+    // 提交或回滚事务
+    if (success)
+    {
+        rc = sqlite3_exec(db, "COMMIT;", nullptr, nullptr, &errMsg);
+        if (rc != SQLITE_OK)
+        {
+            logError("提交事务", errMsg ? errMsg : "未知错误");
+            if (errMsg) sqlite3_free(errMsg);
+            success = false;
+        }
+        else
+        {
+            logSuccess("删除mark (" + std::to_string(mark) + ")");
+        }
+    }
+    else
+    {
+        sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+    }
+
+    return success;
+}
+

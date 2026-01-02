@@ -56,6 +56,7 @@ private:
     Ui::Copya *ui;
     ClipDatabase *database;
     Monitor *monitor;
+    QWidget *widget_3=findChild<QWidget*>("widget_3");
 
 private slots:
     void onPlainTextEditChanged();
@@ -72,5 +73,28 @@ private:
 private slots:
     void onTreeWidgetCurrentItemChanged(QTreeWidgetItem *current,
                                         QTreeWidgetItem *previous);
+
+private slots:
+    void refreshLabelsDisplay();
+    void onAddLabelButtonClicked();
+    void onLabelButtonLeftClicked(int mark);
+    void onLabelButtonRightClicked(int mark);
+
+private:
+    // 删除mark标识的函数
+    bool deleteMark(int mark);
+
+    // 查询函数，传入mark，传出为mark对应的文本，如果不存在则返回"普通"
+    QString getLabelTextByMark(int mark);
+
+    // 获取mark对应的所有项目
+    QVector<std::tuple<int, QString, int, QString>> getDataByMark(int mark);
+
+    // 辅助函数：将数据库返回的vector转换为QVector
+    QVector<std::tuple<int, QString, int, QString>>
+    convertToQtVector(const std::vector<std::tuple<int, std::string, int, std::string>>& dbVector);
+
+
+
 };
 #endif  // COPYA_H

@@ -6,6 +6,16 @@
 #include <QHeaderView>
 #include <QKeyEvent>
 #include <QMessageBox>
+#include <QToolButton>
+#include <QVBoxLayout>
+#include <QInputDialog>
+#include <QMenu>
+#include <QAction>
+#include <QIcon>
+#include <QCloseEvent>
+#include <QWidget>
+#include <QLabel>
+#include <QSpacerItem>
 
 #include "./ui_copya.h"
 
@@ -95,6 +105,8 @@ void Copya::init()
     connect(ui->treeWidget, &QTreeWidget::currentItemChanged, this,
             &Copya::onTreeWidgetCurrentItemChanged);
 
+
+refreshLabelsDisplay();
     loadData();
 }
 
@@ -709,3 +721,351 @@ void Copya::onDeleteSelected()
 //    this->hide();
 //    event->ignore();
 //}
+
+
+// 刷新widget_3区域的显示
+void Copya::refreshLabelsDisplay()
+{
+    qDebug() << "开始刷新标签显示...";
+    qDebug() << "ui指针:" << ui;
+
+    // 检查 ui 和 widget_3 是否存在
+    if (!ui) {
+        qDebug() << "错误：ui 指针为空";
+        return;
+    }
+
+    if (!ui->widget_3) {
+        qDebug() << "错误：widget_3 指针为空";
+        return;
+    }
+
+    qDebug() << "widget_3指针:" << ui->widget_3;
+
+    // 清除widget_3中的所有现有widget
+    QLayout *layout = ui->widget_3->layout();
+    if (layout) {
+        qDebug() << "清除现有布局...";
+        QLayoutItem *item;
+        while ((item = layout->takeAt(0)) != nullptr) {
+            if (item->widget()) {
+                qDebug() << "删除widget:" << item->widget()->objectName();
+                item->widget()->deleteLater();
+            }
+            delete item;
+        }
+        delete layout;
+        qDebug() << "现有布局已清除";
+    } else {
+        qDebug() << "widget_3 没有现有布局";
+    }
+
+    // 创建新的垂直布局
+    QVBoxLayout *vLayout = new QVBoxLayout(ui->widget_3);
+    vLayout->setSpacing(5);
+    vLayout->setContentsMargins(5, 5, 5, 5);
+    qDebug() << "新布局创建完成";
+
+    // 检查数据库是否打开
+    if (!database) {
+        qDebug() << "数据库指针为空";
+        QLabel *infoLabel = new QLabel("数据库未初始化", ui->widget_3);
+        infoLabel->setAlignment(Qt::AlignCenter);
+        infoLabel->setStyleSheet("color: gray; font-style: italic;");
+        vLayout->addWidget(infoLabel);
+        ui->widget_3->setLayout(vLayout);
+        return;
+    }
+
+    if (!database->isOpen()) {
+        qDebug() << "数据库未打开";
+        QLabel *infoLabel = new QLabel("数据库未连接", ui->widget_3);
+        infoLabel->setAlignment(Qt::AlignCenter);
+        infoLabel->setStyleSheet("color: gray; font-style: italic;");
+        vLayout->addWidget(infoLabel);
+        ui->widget_3->setLayout(vLayout);
+        return;
+    }
+
+    // 从数据库获取所有marks和标签
+    qDebug() << "从数据库获取标签数据...";
+    std::vector<std::pair<int, std::string>> marks = database->getAllMarksAndLabels();
+    qDebug() << "获取到" << marks.size() << "个标签";
+
+    if (marks.empty()) {
+        qDebug() << "数据库中没有标签";
+        QLabel *infoLabel = new QLabel("暂无标签\n(右键项目可添加标签)", ui->widget_3);
+        infoLabel->setAlignment(Qt::AlignCenter);
+        infoLabel->setStyleSheet("color: gray; font-style: italic;");
+        infoLabel->setWordWrap(true);
+        vLayout->addWidget(infoLabel);
+    } else {
+        // 添加数据库中的标签
+        for (const auto &markLabel : marks) {
+            int mark = markLabel.first;
+            QString labelText = QString::fromStdString(markLabel.second);
+
+            qDebug() << "添加标签 - Mark:" << mark << "标签:" << labelText;
+
+            QToolButton *button = new QToolButton(ui->widget_3);
+            button->setObjectName(QString("labelButton_%1").arg(mark));
+            button->setText(labelText);
+
+            // 设置图标，如果资源文件存在
+            QString iconPath = ":/main/icon/MynauiLabelSolid.svg";
+            if (QFile::exists(iconPath)) {
+                button->setIcon(QIcon(iconPath));
+                button->setIconSize(QSize(16, 16));
+                qDebug() << "图标加载成功:" << iconPath;
+            } else {
+                qDebug() << "图标文件不存在:" << iconPath;
+                // 如果没有图标，可以设置一个默认的样式或使用文字
+                button->setStyleSheet(button->styleSheet() + "QToolButton { color: #2c3e50; }");
+            }
+
+            button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+            button->setAutoRaise(true);
+            button->setStyleSheet(button->styleSheet() +
+                "QToolButton { "
+                "text-align: left; "
+                "padding: 5px; "
+                "border: 1px solid #ddd; "
+                "border-radius: 3px; "
+                "margin: 2px; "
+                "}"
+                "QToolButton:hover { "
+                "background-color: #f0f0f0; "
+                "border-color: #bbb; "
+                "}");
+
+            button->setProperty("mark", mark);
+            button->setProperty("labelText", labelText);
+            button->setToolTip(QString("Mark: %1\n点击查看该标签的项目").arg(mark));
+
+            // 创建右键菜单
+            QMenu *contextMenu = new QMenu(button);
+            QAction *editAction = contextMenu->addAction("编辑标签");
+            QAction *deleteAction = contextMenu->addAction("删除标签");
+            QAction *viewAction = contextMenu->addAction("查看项目");
+            contextMenu->addSeparator();
+            QAction *refreshAction = contextMenu->addAction("刷新显示");
+
+            // 连接右键菜单动作
+            connect(editAction, &QAction::triggered, this, [this, mark, button]() {
+                QString currentLabel = button->property("labelText").toString();
+                bool ok;
+                QString newLabel = QInputDialog::getText(this, "编辑标签",
+                    "请输入新标签名称:", QLineEdit::Normal, currentLabel, &ok);
+                if (ok && !newLabel.isEmpty()) {
+                    if (database->updateLabel(mark, newLabel.toStdString())) {
+                        button->setText(newLabel);
+                        button->setProperty("labelText", newLabel);
+                        QMessageBox::information(this, "成功", "标签更新成功");
+                    } else {
+                        QMessageBox::warning(this, "错误", "标签更新失败");
+                    }
+                }
+            });
+
+            connect(deleteAction, &QAction::triggered, this, [this, mark, labelText]() {
+                QVector<std::tuple<int, QString, int, QString>> items = getDataByMark(mark);
+                int ret = QMessageBox::question(this, "确认删除",
+                    QString("确定要删除标签 '%1' 和相关的 %2 个项目吗？\n此操作不可撤销！")
+                        .arg(labelText).arg(items.size()),
+                    QMessageBox::Yes | QMessageBox::No);
+                if (ret == QMessageBox::Yes) {
+                    if (deleteMark(mark)) {
+                        QMessageBox::information(this, "成功", "标签删除成功");
+                        refreshLabelsDisplay(); // 刷新显示
+                    } else {
+                        QMessageBox::warning(this, "错误", "标签删除失败");
+                    }
+                }
+            });
+
+            connect(viewAction, &QAction::triggered, this, [this, mark, labelText]() {
+                onLabelButtonRightClicked(mark);
+            });
+
+            connect(refreshAction, &QAction::triggered, this, [this]() {
+                refreshLabelsDisplay();
+            });
+
+            // 设置按钮的右键菜单
+            button->setContextMenuPolicy(Qt::CustomContextMenu);
+            connect(button, &QToolButton::customContextMenuRequested,
+                    this, [button, contextMenu]() {
+                contextMenu->exec(QCursor::pos());
+            });
+
+            // 连接左键点击信号
+            connect(button, &QToolButton::clicked, this, [this, mark]() {
+                onLabelButtonLeftClicked(mark);
+            });
+
+            vLayout->addWidget(button);
+        }
+    }
+
+    // 添加"添加标签"按钮
+    QToolButton *addButton = new QToolButton(ui->widget_3);
+    addButton->setObjectName("addLabelButton");
+    addButton->setText("+ 添加标签");
+    addButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    addButton->setAutoRaise(true);
+    addButton->setStyleSheet(
+        "QToolButton { "
+        "color: #3498db; "
+        "border: 1px dashed #3498db; "
+        "border-radius: 3px; "
+        "padding: 5px; "
+        "margin: 2px; "
+        "font-weight: bold; "
+        "}"
+        "QToolButton:hover { "
+        "background-color: #e8f4fc; "
+        "color: #2980b9; "
+        "}");
+
+    connect(addButton, &QToolButton::clicked, this, &Copya::onAddLabelButtonClicked);
+    vLayout->addWidget(addButton);
+
+    // 添加垂直弹簧
+    vLayout->addStretch();
+    ui->widget_3->setLayout(vLayout);
+
+    qDebug() << "标签显示刷新完成";
+}
+// 添加标签按钮的点击槽函数
+void Copya::onAddLabelButtonClicked()
+{
+    bool ok;
+    QString label = QInputDialog::getText(this, "添加标签",
+        "请输入标签名称:", QLineEdit::Normal, "", &ok);
+
+    if (ok && !label.isEmpty()) {
+        int mark = database->setLabel(label.toStdString());
+        if (mark != -1) {
+            QMessageBox::information(this, "成功",
+                QString("标签添加成功，分配的Mark为: %1").arg(mark));
+            refreshLabelsDisplay(); // 刷新显示
+        } else {
+            QMessageBox::warning(this, "错误", "标签添加失败");
+        }
+    }
+}
+
+// 标签左键单击槽函数
+void Copya::onLabelButtonLeftClicked(int mark)
+{
+    QString labelText = getLabelTextByMark(mark);
+    qDebug() << "左键单击标签 - Mark:" << mark << "标签:" << labelText;
+
+    // 可以在这里添加其他逻辑，比如过滤显示该标签的项目
+    // emit labelSelected(mark); // 如果需要可以发射信号
+
+    // 显示一个简单的消息
+    QMessageBox::information(this, "标签选择",
+        QString("选择了标签: %1 (Mark: %2)").arg(labelText).arg(mark));
+}
+
+// 标签右键单击槽函数
+void Copya::onLabelButtonRightClicked(int mark)
+{
+    QString labelText = getLabelTextByMark(mark);
+    qDebug() << "右键单击标签 - Mark:" << mark << "标签:" << labelText;
+
+    // 获取mark对应的所有项目
+    auto items = getDataByMark(mark);
+
+    if (items.isEmpty()) {
+        qDebug() << "该标签下没有项目";
+        QMessageBox::information(this, "信息",
+            QString("标签 \"%1\" 下没有项目").arg(labelText));
+    } else {
+        QStringList itemList;
+        for (const auto &item : items) {
+            int id = std::get<0>(item);
+            QString text = std::get<1>(item);
+            QString time = std::get<3>(item);
+            // 显示文本的前50个字符，避免太长
+            QString displayText = text.length() > 50 ? text.left(47) + "..." : text;
+            itemList << QString("ID: %1 | %2 | 时间: %3").arg(id).arg(displayText).arg(time);
+        }
+
+        // 弹出对话框显示所有项目
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle(QString("标签 \"%1\" 的项目列表 (共%2项)").arg(labelText).arg(items.size()));
+        msgBox.setText(QString("该标签下有 %1 个项目:").arg(items.size()));
+        msgBox.setDetailedText(itemList.join("\n"));
+        msgBox.setIcon(QMessageBox::Information);
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.exec();
+    }
+}
+
+// 删除mark标识的函数
+bool Copya::deleteMark(int mark)
+{
+    if (mark <= 0) {
+        qDebug() << "无法删除默认mark(0)";
+        return false;
+    }
+
+    // 直接调用数据库的deleteMark函数
+    return database->deleteMark(mark);
+}
+
+// 查询函数，传入mark，传出为mark对应的文本，如果不存在则返回"普通"
+QString Copya::getLabelTextByMark(int mark)
+{
+    if (mark == 0) {
+        return "普通";
+    }
+
+    // 从数据库获取所有marks和标签
+    std::vector<std::pair<int, std::string>> marks = database->getAllMarksAndLabels();
+
+    // 查找对应的mark
+    for (const auto &markLabel : marks) {
+        if (markLabel.first == mark) {
+            return QString::fromStdString(markLabel.second);
+        }
+    }
+
+    // 如果没有找到，返回"普通"
+    return "普通";
+}
+
+// 获取mark对应的所有项目
+QVector<std::tuple<int, QString, int, QString>> Copya::getDataByMark(int mark)
+{
+    // 从数据库获取数据
+    std::vector<std::tuple<int, std::string, int, std::string>> dbResult = database->getDataByMark(mark);
+
+    // 转换为Qt格式
+    return convertToQtVector(dbResult);
+}
+
+// 辅助函数：将数据库返回的vector转换为QVector
+QVector<std::tuple<int, QString, int, QString>>
+Copya::convertToQtVector(const std::vector<std::tuple<int, std::string, int, std::string>>& dbVector)
+{
+    QVector<std::tuple<int, QString, int, QString>> result;
+
+    for (const auto &item : dbVector) {
+        int id = std::get<0>(item);
+        std::string text = std::get<1>(item);
+        int mark = std::get<2>(item);
+        std::string time = std::get<3>(item);
+
+        result.append(std::make_tuple(
+            id,
+            QString::fromStdString(text),
+            mark,
+            QString::fromStdString(time)
+        ));
+    }
+
+    return result;
+}
