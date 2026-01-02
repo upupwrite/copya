@@ -19,13 +19,7 @@
      <widget class="QWidget" name="widget_2" native="true">
       <layout class="QGridLayout" name="gridLayout_2">
        <item row="0" column="0" rowspan="2">
-        <widget class="QTreeWidget" name="treeWidget">
-         <column>
-          <property name="text">
-           <string notr="true">1</string>
-          </property>
-         </column>
-        </widget>
+        <widget class="QTreeWidget" name="treeWidget"/>
        </item>
        <item row="0" column="1" rowspan="2">
         <widget class="QPlainTextEdit" name="plainTextEdit"/>

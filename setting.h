@@ -3,7 +3,8 @@
 
 #include <QDialog>
 
-namespace Ui {
+namespace Ui
+{
 class Setting;
 }
 
@@ -19,4 +20,4 @@ private:
     Ui::Setting *ui;
 };
 
-#endif // SETTING_H
+#endif  // SETTING_H
