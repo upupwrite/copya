@@ -9,7 +9,7 @@
 #include <QMessageBox>
 #include <QStyle>
 #include <QSystemTrayIcon>
-
+#include <iostream>
 #include "copya.h"
 
 int main(int argc, char *argv[])
@@ -62,6 +62,14 @@ int main(int argc, char *argv[])
         isFirstInstance = true;
     }
     socket.close();
+
+    // 检查是否是第一次启动且传入了--menu参数
+    if (isFirstInstance && parser.isSet(menuOption))
+    {
+        // 第一次启动时如果传入了--menu参数，不启动程序
+        std::cout<<"无法使用--menu参数"<<std::endl;
+        return 0;
+    }
 
     // 如果没有已有实例，正常启动程序
 
@@ -120,13 +128,6 @@ int main(int argc, char *argv[])
                                  clientSocket->deleteLater();
                              });
         });
-
-    // 如果使用--menu参数启动，第一次启动时显示窗口
-    // 如果没有--menu参数，窗口保持隐藏（只显示托盘）
-    if (parser.isSet(menuOption))
-    {
-        w.show();
-    }
 
     // 创建系统托盘图标
     QSystemTrayIcon *trayIcon = new QSystemTrayIcon(&w);
