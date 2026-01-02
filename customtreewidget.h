@@ -1,8 +1,8 @@
 #ifndef CUSTOMTREEWIDGET_H
 #define CUSTOMTREEWIDGET_H
 
-#include <QTreeWidget>
 #include <QStyleOptionViewItem>
+#include <QTreeWidget>
 
 class CustomTreeWidget : public QTreeWidget
 {
@@ -12,7 +12,8 @@ public:
     explicit CustomTreeWidget(QWidget *parent = nullptr);
 
     // 重写scrollTo方法，禁用自动滚动
-    void scrollTo(const QModelIndex &index, ScrollHint hint = EnsureVisible) override;
+    void scrollTo(const QModelIndex &index,
+                  ScrollHint hint = EnsureVisible) override;
 
     // 可选：禁用自动滚动到选择项
     void setAutoScrollOnSelection(bool enable);
@@ -22,4 +23,4 @@ protected:
     bool m_autoScrollOnSelection = false;
 };
 
-#endif // CUSTOMTREEWIDGET_H
+#endif  // CUSTOMTREEWIDGET_H

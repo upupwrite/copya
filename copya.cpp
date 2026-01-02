@@ -12,6 +12,7 @@
 #include <QLabel>
 #include <QMenu>
 #include <QMessageBox>
+#include <QSize>
 #include <QSpacerItem>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -105,6 +106,9 @@ void Copya::init()
     connect(ui->treeWidget, &QTreeWidget::currentItemChanged, this,
             &Copya::onTreeWidgetCurrentItemChanged);
 
+    connect(ui->addLabelButton, &QToolButton::clicked, this,
+            &Copya::onAddLabelButtonClicked);
+
     refreshLabelsDisplay();
     loadData();
 }
@@ -115,6 +119,33 @@ Copya::~Copya()
     if (database)
     {
         delete database;
+    }
+}
+
+void Copya::onMarkAsIt()
+{
+    QTreeWidgetItem *currentItem = ui->treeWidget->currentItem();
+    int mark;
+    if (!currentItem)
+    {
+        QMessageBox::information(this, "提示", "请先选择一个项目！");
+        return;
+    }
+
+    int id = currentItem->data(0, Qt::UserRole + 1).toInt();
+
+    if (database->setMarkById(id, 1))
+    {
+        currentItem->setText(1, "重要");
+        currentItem->setForeground(1, QBrush(Qt::red));
+
+        QFont font = currentItem->font(0);
+        font.setBold(true);
+        currentItem->setFont(0, font);
+    }
+    else
+    {
+        QMessageBox::warning(this, "错误", "标记为重要失败！");
     }
 }
 
@@ -768,18 +799,13 @@ void Copya::refreshLabelsDisplay()
     // 创建新的垂直布局
     QVBoxLayout *vLayout = new QVBoxLayout(ui->widget_3);
     vLayout->setSpacing(5);
-    vLayout->setContentsMargins(5, 5, 5, 5);
+    vLayout->setContentsMargins(0, 0, 0, 0);
     qDebug() << "新布局创建完成";
 
     // 检查数据库是否打开
     if (!database)
     {
         qDebug() << "数据库指针为空";
-        QLabel *infoLabel = new QLabel("数据库未初始化", ui->widget_3);
-        infoLabel->setAlignment(Qt::AlignCenter);
-        infoLabel->setStyleSheet("color: gray; font-style: italic;");
-        vLayout->addWidget(infoLabel);
-        ui->widget_3->setLayout(vLayout);
         return;
     }
 
@@ -803,12 +829,6 @@ void Copya::refreshLabelsDisplay()
     if (marks.empty())
     {
         qDebug() << "数据库中没有标签";
-        QLabel *infoLabel =
-            new QLabel("暂无标签\n(右键项目可添加标签)", ui->widget_3);
-        infoLabel->setAlignment(Qt::AlignCenter);
-        infoLabel->setStyleSheet("color: gray; font-style: italic;");
-        infoLabel->setWordWrap(true);
-        vLayout->addWidget(infoLabel);
     }
     else
     {
@@ -822,14 +842,13 @@ void Copya::refreshLabelsDisplay()
 
             QToolButton *button = new QToolButton(ui->widget_3);
             button->setObjectName(QString("labelButton_%1").arg(mark));
-            button->setText(labelText);
 
-            // 设置图标，如果资源文件存在
+            // 设置图标
             QString iconPath = ":/main/icon/MynauiLabelSolid.svg";
             if (QFile::exists(iconPath))
             {
                 button->setIcon(QIcon(iconPath));
-                button->setIconSize(QSize(16, 16));
+                button->setIconSize(QSize(20, 20));
                 qDebug() << "图标加载成功:" << iconPath;
             }
             else
@@ -840,7 +859,6 @@ void Copya::refreshLabelsDisplay()
                                       "QToolButton { color: #2c3e50; }");
             }
 
-            button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
             button->setAutoRaise(true);
             button->setStyleSheet(button->styleSheet() +
                                   "QToolButton { "
@@ -858,7 +876,7 @@ void Copya::refreshLabelsDisplay()
             button->setProperty("mark", mark);
             button->setProperty("labelText", labelText);
             button->setToolTip(
-                QString("Mark: %1\n点击查看该标签的项目").arg(mark));
+                QString("Name: %1\n点击设置项目的标签").arg(labelText));
 
             // 创建右键菜单
             QMenu *contextMenu = new QMenu(button);
@@ -886,6 +904,9 @@ void Copya::refreshLabelsDisplay()
                         {
                             button->setText(newLabel);
                             button->setProperty("labelText", newLabel);
+                            button->setToolTip(
+                                QString("Name: %1\n点击设置项目的标签")
+                                    .arg(newLabel));
                             QMessageBox::information(this, "成功",
                                                      "标签更新成功");
                         }
@@ -934,8 +955,7 @@ void Copya::refreshLabelsDisplay()
             // 设置按钮的右键菜单
             button->setContextMenuPolicy(Qt::CustomContextMenu);
             connect(button, &QToolButton::customContextMenuRequested, this,
-                    [button, contextMenu]()
-                    { contextMenu->exec(QCursor::pos()); });
+                    [contextMenu]() { contextMenu->exec(QCursor::pos()); });
 
             // 连接左键点击信号
             connect(button, &QToolButton::clicked, this,
@@ -944,30 +964,6 @@ void Copya::refreshLabelsDisplay()
             vLayout->addWidget(button);
         }
     }
-
-    // 添加"添加标签"按钮
-    QToolButton *addButton = new QToolButton(ui->widget_3);
-    addButton->setObjectName("addLabelButton");
-    addButton->setText("+ 添加标签");
-    addButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
-    addButton->setAutoRaise(true);
-    addButton->setStyleSheet(
-        "QToolButton { "
-        "color: #3498db; "
-        "border: 1px dashed #3498db; "
-        "border-radius: 3px; "
-        "padding: 5px; "
-        "margin: 2px; "
-        "font-weight: bold; "
-        "}"
-        "QToolButton:hover { "
-        "background-color: #e8f4fc; "
-        "color: #2980b9; "
-        "}");
-
-    connect(addButton, &QToolButton::clicked, this,
-            &Copya::onAddLabelButtonClicked);
-    vLayout->addWidget(addButton);
 
     // 添加垂直弹簧
     vLayout->addStretch();

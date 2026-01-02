@@ -46,6 +46,7 @@ private slots:
     void onSearchTextChanged(const QString &text);  // 搜索文本变化时的处理
     void onSearchButtonClicked();                   // 搜索按钮点击
     void onClearSearchClicked();                    // 清除搜索
+    void onMarkAsIt();
 
 private:
     void setupUI();
