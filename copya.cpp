@@ -122,10 +122,11 @@ Copya::~Copya()
     }
 }
 
-void Copya::onMarkAsIt()
+void Copya::onMarkAsIt(int mark)
 {
     QTreeWidgetItem *currentItem = ui->treeWidget->currentItem();
-    int mark;
+    QString labelText = getLabelTextByMark(mark);
+    qDebug() << "左键单击标签 - Mark:" << mark << "标签:" << labelText;
     if (!currentItem)
     {
         QMessageBox::information(this, "提示", "请先选择一个项目！");
@@ -134,18 +135,13 @@ void Copya::onMarkAsIt()
 
     int id = currentItem->data(0, Qt::UserRole + 1).toInt();
 
-    if (database->setMarkById(id, 1))
+    if (database->setMarkById(id, mark))
     {
-        currentItem->setText(1, "重要");
-        currentItem->setForeground(1, QBrush(Qt::red));
-
-        QFont font = currentItem->font(0);
-        font.setBold(true);
-        currentItem->setFont(0, font);
+        currentItem->setText(1, labelText);
     }
     else
     {
-        QMessageBox::warning(this, "错误", "标记为重要失败！");
+        QMessageBox::warning(this, "错误", "标记失败！");
     }
 }
 
@@ -453,6 +449,13 @@ bool Copya::eventFilter(QObject *watched, QEvent *event)
             togglePlainTextEditVisibility();
             return true;
         }
+
+        if (keyEvent->key() == Qt::Key_F12)
+        {
+            currentShowMark = -1;
+            refreshData();
+            return true;
+        }
     }
 
     // 添加 ESC 键隐藏窗口的处理（全局）
@@ -549,7 +552,7 @@ void Copya::loadData()
         }
         else
         {
-            markText = QString::number(mark);
+            markText = getLabelTextByMark(mark);
         }
         treeItem->setText(1, markText);
 
@@ -702,7 +705,14 @@ void Copya::refreshData()
     }
     else
     {
-        loadData();
+        if (currentShowMark == -1)
+        {
+            loadData();
+        }
+        else
+        {
+            loadMarkData(currentShowMark);
+        }
     }
 
     ui->plainTextEdit->blockSignals(false);
@@ -718,27 +728,20 @@ void Copya::onDeleteSelected()
 
     int id = currentItem->data(0, Qt::UserRole + 1).toInt();
 
-    int ret = QMessageBox::question(this, "确认", "确定要删除选中的项目吗？",
-                                    QMessageBox::Yes | QMessageBox::No);
-
-    if (ret == QMessageBox::Yes)
+    if (database->deleteById(id))
     {
-        if (database->deleteById(id))
+        // 如果删除的是当前正在编辑的项目，清空编辑状态
+        if (currentEditingId == id)
         {
-            // 如果删除的是当前正在编辑的项目，清空编辑状态
-            if (currentEditingId == id)
-            {
-                currentEditingId = -1;
-                ui->plainTextEdit->clear();
-            }
+            currentEditingId = -1;
+            ui->plainTextEdit->clear();
+        }
 
-            delete currentItem;
-            QMessageBox::information(this, "成功", "项目已删除！");
-        }
-        else
-        {
-            QMessageBox::warning(this, "错误", "删除项目失败！");
-        }
+        delete currentItem;
+    }
+    else
+    {
+        QMessageBox::warning(this, "错误", "删除项目失败！");
     }
 }
 
@@ -959,7 +962,7 @@ void Copya::refreshLabelsDisplay()
 
             // 连接左键点击信号
             connect(button, &QToolButton::clicked, this,
-                    [this, mark]() { onLabelButtonLeftClicked(mark); });
+                    [this, mark]() { onMarkAsIt(mark); });
 
             vLayout->addWidget(button);
         }
@@ -995,24 +998,10 @@ void Copya::onAddLabelButtonClicked()
     }
 }
 
-// 标签左键单击槽函数
-void Copya::onLabelButtonLeftClicked(int mark)
-{
-    QString labelText = getLabelTextByMark(mark);
-    qDebug() << "左键单击标签 - Mark:" << mark << "标签:" << labelText;
-
-    // 可以在这里添加其他逻辑，比如过滤显示该标签的项目
-    // emit labelSelected(mark); // 如果需要可以发射信号
-
-    // 显示一个简单的消息
-    QMessageBox::information(
-        this, "标签选择",
-        QString("选择了标签: %1 (Mark: %2)").arg(labelText).arg(mark));
-}
-
 // 标签右键单击槽函数
 void Copya::onLabelButtonRightClicked(int mark)
 {
+    currentShowMark = mark;
     QString labelText = getLabelTextByMark(mark);
     qDebug() << "右键单击标签 - Mark:" << mark << "标签:" << labelText;
 
@@ -1027,31 +1016,7 @@ void Copya::onLabelButtonRightClicked(int mark)
     }
     else
     {
-        QStringList itemList;
-        for (const auto &item : items)
-        {
-            int id = std::get<0>(item);
-            QString text = std::get<1>(item);
-            QString time = std::get<3>(item);
-            // 显示文本的前50个字符，避免太长
-            QString displayText =
-                text.length() > 50 ? text.left(47) + "..." : text;
-            itemList << QString("ID: %1 | %2 | 时间: %3")
-                            .arg(id)
-                            .arg(displayText)
-                            .arg(time);
-        }
-
-        // 弹出对话框显示所有项目
-        QMessageBox msgBox(this);
-        msgBox.setWindowTitle(QString("标签 \"%1\" 的项目列表 (共%2项)")
-                                  .arg(labelText)
-                                  .arg(items.size()));
-        msgBox.setText(QString("该标签下有 %1 个项目:").arg(items.size()));
-        msgBox.setDetailedText(itemList.join("\n"));
-        msgBox.setIcon(QMessageBox::Information);
-        msgBox.setStandardButtons(QMessageBox::Ok);
-        msgBox.exec();
+        refreshData();
     }
 }
 
@@ -1122,4 +1087,81 @@ QVector<std::tuple<int, QString, int, QString>> Copya::convertToQtVector(
     }
 
     return result;
+}
+
+void Copya::loadMarkData(int mark)
+{
+    // 在清空plainTextEdit之前阻止信号
+    ui->plainTextEdit->blockSignals(true);
+
+    ui->plainTextEdit->clear();
+    currentEditingId = -1;
+
+    ui->treeWidget->clear();
+    ui->treeWidget->blockSignals(true);  // 临时阻止treeWidget的信号
+
+    auto data = database->getDataByMark(mark);
+    if (data.empty())
+    {
+        ui->treeWidget->blockSignals(false);
+        ui->plainTextEdit->blockSignals(false);
+        return;
+    }
+
+    // 使用反向迭代器实现倒序显示
+    for (auto it = data.rbegin(); it != data.rend(); ++it)
+    {
+        const auto &item = *it;
+        int id = std::get<0>(item);
+        std::string content = std::get<1>(item);
+        int mark = std::get<2>(item);
+
+        QTreeWidgetItem *treeItem = new QTreeWidgetItem(ui->treeWidget);
+
+        // 设置内容，如果内容太长则截断
+        QString contentText = QString::fromStdString(content);
+        if (contentText.length() > 200)
+        {
+            contentText = contentText.left(200) + "...";
+        }
+        treeItem->setText(0, contentText);
+
+        // 设置标记
+        QString markText;
+        if (mark == 1)
+        {
+            markText = "重要";
+            treeItem->setForeground(1, QBrush(Qt::red));
+        }
+        else if (mark == 0)
+        {
+            markText = "普通";
+        }
+        else
+        {
+            markText = getLabelTextByMark(mark);
+        }
+        treeItem->setText(1, markText);
+
+        // 存储完整的原始内容
+        treeItem->setData(0, Qt::UserRole, QString::fromStdString(content));
+        treeItem->setData(0, Qt::UserRole + 1, id);
+
+        // 根据标记设置字体
+        if (mark == 1)
+        {
+            QFont font = treeItem->font(0);
+            font.setBold(true);
+            treeItem->setFont(0, font);
+        }
+    }
+
+    // 自动调整列宽
+    ui->treeWidget->header()->setStretchLastSection(false);
+    ui->treeWidget->header()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->treeWidget->header()->setSectionResizeMode(
+        1, QHeaderView::ResizeToContents);
+
+    ui->treeWidget->blockSignals(false);     // 恢复信号
+    ui->plainTextEdit->blockSignals(false);  // 恢复信号
 }
