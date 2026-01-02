@@ -26,6 +26,8 @@ set(PROJECT_SOURCES
         setting.h
         setting.ui
         icon.qrc
+        customtreewidget.h
+        customtreewidget.cpp
 
 )
 
