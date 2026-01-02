@@ -179,6 +179,9 @@ void Copya::onEnterPressed()
 
         // 显示复制成功的提示
         qDebug() << "设置剪切板文本成功";
+
+        // 不关闭程序，只是隐藏窗口
+        this->hide();
     }
     else
     {
