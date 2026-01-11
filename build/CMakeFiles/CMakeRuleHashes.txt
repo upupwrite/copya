@@ -1,0 +1,7 @@
+# Hashes of file build rules.
+da5854749c1d50bdd1b31155a657a0d6 src/CMakeFiles/copya_autogen
+a3f611dfb4bca73d2c6282e5e2bbd203 src/copya_autogen/7BV4YJK25R/qrc_icon.cpp
+3758a3896156709746562c4a720578d1 src/core/CMakeFiles/copya_core_autogen
+52fe8f42b8c6f5125578a398660668a4 src/ui/mainwindow/CMakeFiles/copya_mainwindow_autogen
+d90178c1360d160bd33e75bf1894f13f src/ui/settings/CMakeFiles/copya_settings_autogen
+607c751fd064624aa3c0c3e58561d7b4 src/ui/widgets/CMakeFiles/copya_widgets_autogen

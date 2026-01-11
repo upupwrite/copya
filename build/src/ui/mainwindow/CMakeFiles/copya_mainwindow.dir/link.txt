@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/libcopya_mainwindow.a CMakeFiles/copya_mainwindow.dir/copya_mainwindow_autogen/mocs_compilation.cpp.o CMakeFiles/copya_mainwindow.dir/copya.cpp.o
+/usr/bin/ranlib ../../../lib/libcopya_mainwindow.a

@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/libcopya_widgets.a CMakeFiles/copya_widgets.dir/copya_widgets_autogen/mocs_compilation.cpp.o CMakeFiles/copya_widgets.dir/customtreewidget.cpp.o
+/usr/bin/ranlib ../../../lib/libcopya_widgets.a

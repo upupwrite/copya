@@ -10,6 +10,7 @@
 #include <QStyle>
 #include <QSystemTrayIcon>
 #include <iostream>
+
 #include "copya.h"
 
 int main(int argc, char *argv[])
@@ -67,7 +68,7 @@ int main(int argc, char *argv[])
     if (isFirstInstance && parser.isSet(menuOption))
     {
         // 第一次启动时如果传入了--menu参数，不启动程序
-        std::cout<<"无法使用--menu参数"<<std::endl;
+        std::cout << "无法使用--menu参数" << std::endl;
         return 0;
     }
 

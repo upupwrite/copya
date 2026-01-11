@@ -1,0 +1,2 @@
+/usr/bin/ar qc libui_settings.a CMakeFiles/ui_settings.dir/ui_settings_autogen/mocs_compilation.cpp.o CMakeFiles/ui_settings.dir/setting.cpp.o
+/usr/bin/ranlib libui_settings.a

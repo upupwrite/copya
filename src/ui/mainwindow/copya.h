@@ -11,8 +11,8 @@
 #include <QTreeWidget>
 #include <QVBoxLayout>
 
-#include "clipboard.h"
-#include "database.h"
+#include "core/clipboard.h"
+#include "core/database.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui
