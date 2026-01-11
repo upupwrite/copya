@@ -220,34 +220,85 @@ bool ClipDatabase::writeText(const std::string &text)
     }
 
     sqlite3_stmt *stmt = nullptr;
-    std::string sql = "INSERT INTO texts (text_content) VALUES (?);";
 
-    int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    // 使用 INSERT OR REPLACE 或 UPSERT 语法（SQLite 3.24.0+ 支持）
+    // 这里使用 INSERT OR IGNORE + UPDATE 的方式兼容所有版本
+    std::string checkSql = "SELECT id FROM texts WHERE text_content = ?;";
+
+    // 先检查是否存在相同文本
+    int rc = sqlite3_prepare_v2(db, checkSql.c_str(), -1, &stmt, nullptr);
     if (rc != SQLITE_OK)
     {
-        logError("准备写入语句", sqlite3_errmsg(db));
+        logError("准备查询语句", sqlite3_errmsg(db));
         return false;
     }
 
-    // 绑定参数
     sqlite3_bind_text(stmt, 1, text.c_str(), -1, SQLITE_TRANSIENT);
-
-    // 执行
     rc = sqlite3_step(stmt);
 
-    // 清理
-    sqlite3_finalize(stmt);
-
-    if (rc != SQLITE_DONE)
+    if (rc == SQLITE_ROW)
     {
-        logError("执行写入", sqlite3_errmsg(db));
+        // 文本已存在，更新更新时间
+        sqlite3_int64 existingId = sqlite3_column_int64(stmt, 0);
+        sqlite3_finalize(stmt);
+
+        // 更新语句
+        std::string updateSql =
+            "UPDATE texts SET updated_time = CURRENT_TIMESTAMP WHERE id = ?;";
+        rc = sqlite3_prepare_v2(db, updateSql.c_str(), -1, &stmt, nullptr);
+        if (rc != SQLITE_OK)
+        {
+            logError("准备更新语句", sqlite3_errmsg(db));
+            return false;
+        }
+
+        sqlite3_bind_int64(stmt, 1, existingId);
+        rc = sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+
+        if (rc != SQLITE_DONE)
+        {
+            logError("执行更新", sqlite3_errmsg(db));
+            return false;
+        }
+
+        logSuccess("更新文本时间");
+        return true;
+    }
+    else if (rc == SQLITE_DONE)
+    {
+        // 文本不存在，插入新记录
+        sqlite3_finalize(stmt);
+
+        std::string insertSql = "INSERT INTO texts (text_content) VALUES (?);";
+        rc = sqlite3_prepare_v2(db, insertSql.c_str(), -1, &stmt, nullptr);
+        if (rc != SQLITE_OK)
+        {
+            logError("准备插入语句", sqlite3_errmsg(db));
+            return false;
+        }
+
+        sqlite3_bind_text(stmt, 1, text.c_str(), -1, SQLITE_TRANSIENT);
+        rc = sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+
+        if (rc != SQLITE_DONE)
+        {
+            logError("执行插入", sqlite3_errmsg(db));
+            return false;
+        }
+
+        logSuccess("写入新文本");
+        return true;
+    }
+    else
+    {
+        // 查询出错
+        logError("查询文本", sqlite3_errmsg(db));
+        sqlite3_finalize(stmt);
         return false;
     }
-
-    logSuccess("写入文本");
-    return true;
 }
-
 // 批量写入文本
 bool ClipDatabase::writeTexts(const std::vector<std::string> &texts)
 {
@@ -341,8 +392,8 @@ ClipDatabase::readAllData()
     }
 
     const char *sql =
-        "SELECT id, text_content, mark, created_time "
-        "FROM texts ORDER BY created_time ASC;";
+        "SELECT id, text_content, mark, updated_time "
+        "FROM texts ORDER BY updated_time ASC;";
     sqlite3_stmt *stmt = nullptr;
 
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);

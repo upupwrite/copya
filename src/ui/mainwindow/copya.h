@@ -28,7 +28,6 @@ class Copya : public QMainWindow
 public:
     explicit Copya(QWidget *parent = nullptr);
     ~Copya();
-    void init();
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -59,6 +58,7 @@ private:
     ClipDatabase *database;
     Monitor *monitor;
     QWidget *widget_3 = findChild<QWidget *>("widget_3");
+    std::vector<std::pair<int, std::string>> marks;
     void setupUI();
     void loadData();
     void loadMarkData(int mark);
@@ -76,5 +76,7 @@ private:
     QVector<std::tuple<int, QString, int, QString>> convertToQtVector(
         const std::vector<std::tuple<int, std::string, int, std::string>>
             &dbVector);
+
+    void refreshMarkData();
 };
 #endif  // COPYA_H

@@ -88,10 +88,6 @@ int main(int argc, char *argv[])
 
     // 创建主窗口但不立即显示
     Copya w;
-    if (isFirstInstance)
-    {
-        w.init();
-    }
 
     // 连接服务器信号
     QObject::connect(
