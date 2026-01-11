@@ -33,4 +33,4 @@
 
 CMakeLists.txt.user
 .clang-format
-/build
+build/
