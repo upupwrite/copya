@@ -33,3 +33,7 @@
 
 CMakeLists.txt.user
 .clang-format
+<<<<<<< HEAD
+=======
+build/
+>>>>>>> 16c5e4d (fixed:build)
