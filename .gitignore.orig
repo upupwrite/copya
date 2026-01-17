@@ -34,6 +34,10 @@
 CMakeLists.txt.user
 .clang-format
 <<<<<<< HEAD
+build/
+=======
+<<<<<<< HEAD
 =======
 build/
 >>>>>>> 16c5e4d (fixed:build)
+>>>>>>> dev
