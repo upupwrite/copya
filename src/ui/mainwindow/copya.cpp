@@ -660,7 +660,8 @@ void Copya::saveCurrentEdit()
     }
 
     QString content = item->data(0, Qt::UserRole).toString();
-
+    std::string id_str_content = database->getTextById(currentEditingId);
+    QString id_content = QString::fromStdString(id_str_content);
     // 如果内容为空，则删除该项目
     if (content.trimmed().isEmpty())
     {
@@ -675,15 +676,18 @@ void Copya::saveCurrentEdit()
     // 更新数据库
     if (database && database->isOpen())
     {
-        bool success =
-            database->updateTextById(currentEditingId, content.toStdString());
-        if (success)
+        if (content != id_content)
         {
-            qDebug() << "保存到数据库，ID:" << currentEditingId;
-        }
-        else
-        {
-            qDebug() << "保存到数据库失败，ID:" << currentEditingId;
+            bool success = database->updateTextById(currentEditingId,
+                                                    content.toStdString());
+            if (success)
+            {
+                qDebug() << "保存到数据库，ID:" << currentEditingId;
+            }
+            else
+            {
+                qDebug() << "保存到数据库失败，ID:" << currentEditingId;
+            }
         }
     }
 }
