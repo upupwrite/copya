@@ -29,10 +29,7 @@ Copya::Copya(QWidget *parent)
       isManualEdit(false)
 {
     ui->setupUi(this);
-}
 
-void Copya::init()
-{
     // 初始化数据库
     database = new ClipDatabase();
     monitor = new Monitor();
@@ -44,7 +41,8 @@ void Copya::init()
         QMessageBox::critical(this, "错误", "无法打开数据库！");
         return;
     }
-
+    // 从数据库获取所有marks和标签
+    marks = database->getAllMarksAndLabels();
     // 设置按ESC键隐藏窗口
     this->setAttribute(Qt::WA_DeleteOnClose);
 
@@ -121,6 +119,8 @@ Copya::~Copya()
         delete database;
     }
 }
+
+void Copya::refreshMarkData() { marks = database->getAllMarksAndLabels(); }
 
 void Copya::onMarkAsIt(int mark)
 {
@@ -660,7 +660,8 @@ void Copya::saveCurrentEdit()
     }
 
     QString content = item->data(0, Qt::UserRole).toString();
-
+    std::string id_str_content = database->getTextById(currentEditingId);
+    QString id_content = QString::fromStdString(id_str_content);
     // 如果内容为空，则删除该项目
     if (content.trimmed().isEmpty())
     {
@@ -675,15 +676,18 @@ void Copya::saveCurrentEdit()
     // 更新数据库
     if (database && database->isOpen())
     {
-        bool success =
-            database->updateTextById(currentEditingId, content.toStdString());
-        if (success)
+        if (content != id_content)
         {
-            qDebug() << "保存到数据库，ID:" << currentEditingId;
-        }
-        else
-        {
-            qDebug() << "保存到数据库失败，ID:" << currentEditingId;
+            bool success = database->updateTextById(currentEditingId,
+                                                    content.toStdString());
+            if (success)
+            {
+                qDebug() << "保存到数据库，ID:" << currentEditingId;
+            }
+            else
+            {
+                qDebug() << "保存到数据库失败，ID:" << currentEditingId;
+            }
         }
     }
 }
@@ -825,8 +829,6 @@ void Copya::refreshLabelsDisplay()
 
     // 从数据库获取所有marks和标签
     qDebug() << "从数据库获取标签数据...";
-    std::vector<std::pair<int, std::string>> marks =
-        database->getAllMarksAndLabels();
     qDebug() << "获取到" << marks.size() << "个标签";
 
     if (marks.empty())
@@ -938,6 +940,8 @@ void Copya::refreshLabelsDisplay()
                             {
                                 QMessageBox::information(this, "成功",
                                                          "标签删除成功");
+                                refreshMarkData();
+                                refreshData();
                                 refreshLabelsDisplay();  // 刷新显示
                             }
                             else
@@ -989,6 +993,7 @@ void Copya::onAddLabelButtonClicked()
             QMessageBox::information(
                 this, "成功",
                 QString("标签添加成功，分配的Mark为: %1").arg(mark));
+            refreshMarkData();
             refreshLabelsDisplay();  // 刷新显示
         }
         else
@@ -1040,10 +1045,6 @@ QString Copya::getLabelTextByMark(int mark)
     {
         return "普通";
     }
-
-    // 从数据库获取所有marks和标签
-    std::vector<std::pair<int, std::string>> marks =
-        database->getAllMarksAndLabels();
 
     // 查找对应的mark
     for (const auto &markLabel : marks)

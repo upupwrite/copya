@@ -220,34 +220,85 @@ bool ClipDatabase::writeText(const std::string &text)
     }
 
     sqlite3_stmt *stmt = nullptr;
-    std::string sql = "INSERT INTO texts (text_content) VALUES (?);";
 
-    int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    // 使用 INSERT OR REPLACE 或 UPSERT 语法（SQLite 3.24.0+ 支持）
+    // 这里使用 INSERT OR IGNORE + UPDATE 的方式兼容所有版本
+    std::string checkSql = "SELECT id FROM texts WHERE text_content = ?;";
+
+    // 先检查是否存在相同文本
+    int rc = sqlite3_prepare_v2(db, checkSql.c_str(), -1, &stmt, nullptr);
     if (rc != SQLITE_OK)
     {
-        logError("准备写入语句", sqlite3_errmsg(db));
+        logError("准备查询语句", sqlite3_errmsg(db));
         return false;
     }
 
-    // 绑定参数
     sqlite3_bind_text(stmt, 1, text.c_str(), -1, SQLITE_TRANSIENT);
-
-    // 执行
     rc = sqlite3_step(stmt);
 
-    // 清理
-    sqlite3_finalize(stmt);
-
-    if (rc != SQLITE_DONE)
+    if (rc == SQLITE_ROW)
     {
-        logError("执行写入", sqlite3_errmsg(db));
+        // 文本已存在，更新更新时间
+        sqlite3_int64 existingId = sqlite3_column_int64(stmt, 0);
+        sqlite3_finalize(stmt);
+
+        // 更新语句
+        std::string updateSql =
+            "UPDATE texts SET updated_time = CURRENT_TIMESTAMP WHERE id = ?;";
+        rc = sqlite3_prepare_v2(db, updateSql.c_str(), -1, &stmt, nullptr);
+        if (rc != SQLITE_OK)
+        {
+            logError("准备更新语句", sqlite3_errmsg(db));
+            return false;
+        }
+
+        sqlite3_bind_int64(stmt, 1, existingId);
+        rc = sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+
+        if (rc != SQLITE_DONE)
+        {
+            logError("执行更新", sqlite3_errmsg(db));
+            return false;
+        }
+
+        logSuccess("更新文本时间");
+        return true;
+    }
+    else if (rc == SQLITE_DONE)
+    {
+        // 文本不存在，插入新记录
+        sqlite3_finalize(stmt);
+
+        std::string insertSql = "INSERT INTO texts (text_content) VALUES (?);";
+        rc = sqlite3_prepare_v2(db, insertSql.c_str(), -1, &stmt, nullptr);
+        if (rc != SQLITE_OK)
+        {
+            logError("准备插入语句", sqlite3_errmsg(db));
+            return false;
+        }
+
+        sqlite3_bind_text(stmt, 1, text.c_str(), -1, SQLITE_TRANSIENT);
+        rc = sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+
+        if (rc != SQLITE_DONE)
+        {
+            logError("执行插入", sqlite3_errmsg(db));
+            return false;
+        }
+
+        logSuccess("写入新文本");
+        return true;
+    }
+    else
+    {
+        // 查询出错
+        logError("查询文本", sqlite3_errmsg(db));
+        sqlite3_finalize(stmt);
         return false;
     }
-
-    logSuccess("写入文本");
-    return true;
 }
-
 // 批量写入文本
 bool ClipDatabase::writeTexts(const std::vector<std::string> &texts)
 {
@@ -341,8 +392,8 @@ ClipDatabase::readAllData()
     }
 
     const char *sql =
-        "SELECT id, text_content, mark, created_time "
-        "FROM texts ORDER BY created_time ASC;";
+        "SELECT id, text_content, mark, updated_time "
+        "FROM texts ORDER BY updated_time ASC;";
     sqlite3_stmt *stmt = nullptr;
 
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
@@ -956,7 +1007,7 @@ ClipDatabase::getDataByMark(int mark)
 
     std::string sql =
         "SELECT id, text_content, mark, created_time "
-        "FROM texts WHERE mark = ? ORDER BY created_time DESC;";
+        "FROM texts WHERE mark = ? ORDER BY created_time;";
 
     sqlite3_stmt *stmt = nullptr;
 
@@ -1280,4 +1331,109 @@ std::string ClipDatabase::readLatestText()
     sqlite3_finalize(stmt);
 
     return result;
+}
+
+// 根据ID获取文本内容
+std::string ClipDatabase::getTextById(int id)
+{
+    if (!db)
+    {
+        logError("根据ID获取文本", "数据库未打开");
+        return "";
+    }
+
+    std::string sql = "SELECT text_content FROM texts WHERE id = ?;";
+
+    sqlite3_stmt *stmt = nullptr;
+
+    int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    if (rc != SQLITE_OK)
+    {
+        logError("准备根据ID获取文本语句", sqlite3_errmsg(db));
+        return "";
+    }
+
+    sqlite3_bind_int(stmt, 1, id);
+
+    std::string result;
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        const unsigned char *text = sqlite3_column_text(stmt, 0);
+        result = text ? reinterpret_cast<const char *>(text) : "";
+
+        if (!result.empty())
+        {
+            logSuccess("根据ID获取文本成功 (ID: " + std::to_string(id) + ")");
+        }
+        else
+        {
+            logError("根据ID获取文本",
+                     "ID " + std::to_string(id) + " 对应的文本内容为空");
+        }
+    }
+    else
+    {
+        logError("根据ID获取文本",
+                 "未找到ID为 " + std::to_string(id) + " 的记录");
+    }
+
+    sqlite3_finalize(stmt);
+
+    return result;
+}
+
+// 根据ID获取完整记录（包含文本、mark和时间）
+std::tuple<bool, std::string, int, std::string> ClipDatabase::getFullRecordById(
+    int id)
+{
+    bool success = false;
+    std::string textContent;
+    int mark = 0;
+    std::string timeStr;
+
+    if (!db)
+    {
+        logError("根据ID获取完整记录", "数据库未打开");
+        return std::make_tuple(success, textContent, mark, timeStr);
+    }
+
+    std::string sql =
+        "SELECT text_content, mark, created_time FROM texts WHERE id = ?;";
+
+    sqlite3_stmt *stmt = nullptr;
+
+    int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    if (rc != SQLITE_OK)
+    {
+        logError("准备根据ID获取完整记录语句", sqlite3_errmsg(db));
+        return std::make_tuple(success, textContent, mark, timeStr);
+    }
+
+    sqlite3_bind_int(stmt, 1, id);
+
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        // 获取文本内容
+        const unsigned char *text = sqlite3_column_text(stmt, 0);
+        textContent = text ? reinterpret_cast<const char *>(text) : "";
+
+        // 获取mark
+        mark = sqlite3_column_int(stmt, 1);
+
+        // 获取时间
+        const unsigned char *time = sqlite3_column_text(stmt, 2);
+        timeStr = time ? reinterpret_cast<const char *>(time) : "";
+
+        success = true;
+        logSuccess("根据ID获取完整记录成功 (ID: " + std::to_string(id) + ")");
+    }
+    else
+    {
+        logError("根据ID获取完整记录",
+                 "未找到ID为 " + std::to_string(id) + " 的记录");
+    }
+
+    sqlite3_finalize(stmt);
+
+    return std::make_tuple(success, textContent, mark, timeStr);
 }

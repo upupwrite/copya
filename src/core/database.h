@@ -94,5 +94,11 @@ public:
 
     // 获取最新的文本
     std::string readLatestText();
+
+    // 根据ID获取文本内容
+    std::string getTextById(int id);
+
+    // 根据ID获取完整记录（文本、mark、时间）
+    std::tuple<bool, std::string, int, std::string> getFullRecordById(int id);
 };
 #endif  // DATABASE_H
