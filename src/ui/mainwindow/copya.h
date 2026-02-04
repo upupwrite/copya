@@ -21,13 +21,13 @@ class Copya;
 }
 QT_END_NAMESPACE
 
-namespace Marks {
-    inline const int IMPORTANTMARK=1;
-    inline const QString IMPORTANTMARKTEXT="重要";
-    inline const int NORMALMARK=0;
-    inline const QString NORMALMARKTEXT="普通";
-}
-
+namespace Marks
+{
+inline const int IMPORTANTMARK = 1;
+inline const QString IMPORTANTMARKTEXT = "重要";
+inline const int NORMALMARK = 0;
+inline const QString NORMALMARKTEXT = "普通";
+}  // namespace Marks
 
 class Copya : public QMainWindow
 {
@@ -36,8 +36,6 @@ class Copya : public QMainWindow
 public:
     explicit Copya(QWidget *parent = nullptr);
     ~Copya();
-
-
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;

@@ -904,7 +904,8 @@ bool ClipDatabase::setMark(int id, int mark)
     }
 
     // 更新texts表中的mark（不更新时间）
-    std::string sql = "UPDATE texts SET mark = ? WHERE id = ?;";  // 移除了更新时间
+    std::string sql =
+        "UPDATE texts SET mark = ? WHERE id = ?;";  // 移除了更新时间
 
     sqlite3_stmt *stmt = nullptr;
     int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);

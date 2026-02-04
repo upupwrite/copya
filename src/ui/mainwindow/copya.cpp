@@ -31,7 +31,6 @@ Copya::Copya(QWidget *parent)
 {
     ui->setupUi(this);
 
-
     // 初始化数据库
     database = new ClipDatabase();
     monitor = new Monitor();
@@ -131,37 +130,31 @@ Copya::Copya(QWidget *parent)
     ui->clearButton->setStyleSheet(ui->markImportantButton->styleSheet() +
                                    DefaultQss::TOOLSET);
 
-
     QMenu *contextImportantMenu = new QMenu(ui->markImportantButton);
     QAction *viewImportantAction = contextImportantMenu->addAction("查看项目");
     connect(viewImportantAction, &QAction::triggered, this,
-        [this]() {
-            onLabelButtonRightClicked(Marks::IMPORTANTMARK);
-        });
+            [this]() { onLabelButtonRightClicked(Marks::IMPORTANTMARK); });
 
     QMenu *contextNormalMenu = new QMenu(ui->markNormalButton);
     QAction *viewNormalAction = contextNormalMenu->addAction("查看项目");
     connect(viewNormalAction, &QAction::triggered, this,
-        [this]() {
-            onLabelButtonRightClicked(Marks::NORMALMARK);
-        });
-
+            [this]() { onLabelButtonRightClicked(Marks::NORMALMARK); });
 
     ui->markImportantButton->setContextMenuPolicy(Qt::CustomContextMenu);
     ui->markNormalButton->setContextMenuPolicy(Qt::CustomContextMenu);
 
-
     connect(ui->markImportantButton, &QPushButton::customContextMenuRequested,
-            this, [this, contextImportantMenu](const QPoint &pos) {
-        contextImportantMenu->exec(ui->markImportantButton->mapToGlobal(pos));
-    });
+            this,
+            [this, contextImportantMenu](const QPoint &pos)
+            {
+                contextImportantMenu->exec(
+                    ui->markImportantButton->mapToGlobal(pos));
+            });
 
-    connect(ui->markNormalButton, &QPushButton::customContextMenuRequested,
-            this, [this, contextNormalMenu](const QPoint &pos) {
-        contextNormalMenu->exec(ui->markNormalButton->mapToGlobal(pos));
-    });
-
-
+    connect(
+        ui->markNormalButton, &QPushButton::customContextMenuRequested, this,
+        [this, contextNormalMenu](const QPoint &pos)
+        { contextNormalMenu->exec(ui->markNormalButton->mapToGlobal(pos)); });
 
     refreshLabelsDisplay();
     loadData();
