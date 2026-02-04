@@ -6,6 +6,7 @@ add_subdirectory(core)          # 基础库，没有依赖
 add_subdirectory(ui/widgets)    # UI部件，没有依赖
 add_subdirectory(ui/mainwindow) # 主窗口，依赖core和widgets
 add_subdirectory(ui/settings)   # 设置，没有依赖
+add_subdirectory(ui/qss)
 
 # 添加资源文件
 set(RESOURCE_FILES

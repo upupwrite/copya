@@ -5,6 +5,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(mainwindow)
 add_subdirectory(settings)
 add_subdirectory(widgets)
+add_subdirectory(qss)
 
 # 创建UI库（可选，用于统一管理UI组件）
 add_library(copya_ui INTERFACE)
@@ -14,5 +15,6 @@ target_link_libraries(copya_ui INTERFACE
     copya_mainwindow
     copya_settings
     copya_widgets
+    copya_qss
     Qt${QT_VERSION_MAJOR}::Widgets
 )

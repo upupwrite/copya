@@ -19,6 +19,7 @@
 #include <QWidget>
 
 #include "./ui_copya.h"
+#include "ui/qss/default.h"
 
 Copya::Copya(QWidget *parent)
     : QMainWindow(parent),
@@ -859,24 +860,12 @@ void Copya::refreshLabelsDisplay()
             else
             {
                 qDebug() << "图标文件不存在:" << iconPath;
-                // 如果没有图标，可以设置一个默认的样式或使用文字
-                button->setStyleSheet(button->styleSheet() +
-                                      "QToolButton { color: #2c3e50; }");
+                // 如果没有图标，设置一个默认的样式或使用文字
+                button->setStyleSheet(button->styleSheet() +DefaultQss::TOOLSETNULL);
             }
 
             button->setAutoRaise(true);
-            button->setStyleSheet(button->styleSheet() +
-                                  "QToolButton { "
-                                  "text-align: left; "
-                                  "padding: 5px; "
-                                  "border: 1px solid #ddd; "
-                                  "border-radius: 3px; "
-                                  "margin: 2px; "
-                                  "}"
-                                  "QToolButton:hover { "
-                                  "background-color: #f0f0f0; "
-                                  "border-color: #bbb; "
-                                  "}");
+            button->setStyleSheet(button->styleSheet() + DefaultQss::TOOLSET);
 
             button->setProperty("mark", mark);
             button->setProperty("labelText", labelText);
