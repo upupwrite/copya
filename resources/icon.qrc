@@ -7,5 +7,6 @@
         <file>icon/MynauiLabelLight.svg</file>
         <file>icon/MynauiLabelSolid.svg</file>
         <file>icon/SolarRefreshBold.svg</file>
+        <file>icon/EntypoErase.svg</file>
     </qresource>
 </RCC>

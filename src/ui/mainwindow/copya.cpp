@@ -31,6 +31,7 @@ Copya::Copya(QWidget *parent)
 {
     ui->setupUi(this);
 
+
     // 初始化数据库
     database = new ClipDatabase();
     monitor = new Monitor();
@@ -44,6 +45,7 @@ Copya::Copya(QWidget *parent)
     }
     // 从数据库获取所有marks和标签
     marks = database->getAllMarksAndLabels();
+
     // 设置按ESC键隐藏窗口
     this->setAttribute(Qt::WA_DeleteOnClose);
 
@@ -92,8 +94,8 @@ Copya::Copya(QWidget *parent)
             &Copya::onItemDoubleClicked);
     connect(ui->lineEdit, &QLineEdit::textChanged, this,
             &Copya::onSearchTextChanged);
-    connect(ui->searchButton, &QToolButton::clicked, this,
-            &Copya::onSearchButtonClicked);
+    connect(ui->clearButton, &QToolButton::clicked, this,
+            &Copya::onClearSearchClicked);
     // 添加 plainTextEdit 内容改变的信号连接
     connect(ui->plainTextEdit, &QPlainTextEdit::textChanged, this,
             &Copya::onPlainTextEditChanged);
@@ -107,6 +109,59 @@ Copya::Copya(QWidget *parent)
 
     connect(ui->addLabelButton, &QToolButton::clicked, this,
             &Copya::onAddLabelButtonClicked);
+    ui->deleteButton->setAutoRaise(true);
+    ui->refreshButton->setAutoRaise(true);
+    ui->markImportantButton->setAutoRaise(true);
+    ui->markNormalButton->setAutoRaise(true);
+
+    ui->deleteButton->setAutoRaise(true);
+    ui->refreshButton->setAutoRaise(true);
+    ui->markImportantButton->setAutoRaise(true);
+    ui->markNormalButton->setAutoRaise(true);
+    ui->clearButton->setAutoRaise(true);
+
+    ui->markImportantButton->setStyleSheet(
+        ui->markImportantButton->styleSheet() + DefaultQss::TOOLSET);
+    ui->markNormalButton->setStyleSheet(ui->markImportantButton->styleSheet() +
+                                        DefaultQss::TOOLSET);
+    ui->deleteButton->setStyleSheet(ui->markImportantButton->styleSheet() +
+                                    DefaultQss::TOOLSET);
+    ui->refreshButton->setStyleSheet(ui->markImportantButton->styleSheet() +
+                                     DefaultQss::TOOLSET);
+    ui->clearButton->setStyleSheet(ui->markImportantButton->styleSheet() +
+                                   DefaultQss::TOOLSET);
+
+
+    QMenu *contextImportantMenu = new QMenu(ui->markImportantButton);
+    QAction *viewImportantAction = contextImportantMenu->addAction("查看项目");
+    connect(viewImportantAction, &QAction::triggered, this,
+        [this]() {
+            onLabelButtonRightClicked(Marks::IMPORTANTMARK);
+        });
+
+    QMenu *contextNormalMenu = new QMenu(ui->markNormalButton);
+    QAction *viewNormalAction = contextNormalMenu->addAction("查看项目");
+    connect(viewNormalAction, &QAction::triggered, this,
+        [this]() {
+            onLabelButtonRightClicked(Marks::NORMALMARK);
+        });
+
+
+    ui->markImportantButton->setContextMenuPolicy(Qt::CustomContextMenu);
+    ui->markNormalButton->setContextMenuPolicy(Qt::CustomContextMenu);
+
+
+    connect(ui->markImportantButton, &QPushButton::customContextMenuRequested,
+            this, [this, contextImportantMenu](const QPoint &pos) {
+        contextImportantMenu->exec(ui->markImportantButton->mapToGlobal(pos));
+    });
+
+    connect(ui->markNormalButton, &QPushButton::customContextMenuRequested,
+            this, [this, contextNormalMenu](const QPoint &pos) {
+        contextNormalMenu->exec(ui->markNormalButton->mapToGlobal(pos));
+    });
+
+
 
     refreshLabelsDisplay();
     loadData();
@@ -159,7 +214,7 @@ void Copya::onMarkAsImportant()
 
     if (database->setMarkById(id, 1))
     {
-        currentItem->setText(1, "重要");
+        currentItem->setText(1, Marks::IMPORTANTMARKTEXT);
         currentItem->setForeground(1, QBrush(Qt::red));
 
         QFont font = currentItem->font(0);
@@ -185,7 +240,7 @@ void Copya::onMarkAsNormal()
 
     if (database->setMarkById(id, 0))
     {
-        currentItem->setText(1, "普通");
+        currentItem->setText(1, Marks::NORMALMARKTEXT);
         currentItem->setForeground(1, QBrush());
 
         QFont font = currentItem->font(0);
@@ -283,21 +338,18 @@ void Copya::onSearchTextChanged(const QString &text)
     performSearch(text);
 }
 
-// 搜索按钮点击
-void Copya::onSearchButtonClicked()
-{
-    QString searchText = ui->lineEdit->text();
-    if (!searchText.isEmpty())
-    {
-        performSearch(searchText);
-    }
-}
-
 // 清除搜索
-void Copya::onClearSearchClicked()
+void Copya::onClearSearchClicked(bool isRefreshData)
 {
+    if (ui->lineEdit->text().isEmpty())
+    {
+        return;
+    }
     ui->lineEdit->clear();
-    refreshData();
+    if (isRefreshData)
+    {
+        refreshData();
+    }
 }
 
 // 执行搜索的核心函数
@@ -390,12 +442,12 @@ void Copya::performSearch(const QString &searchText)
         QString markText;
         if (mark == 1)
         {
-            markText = "重要";
+            markText = Marks::IMPORTANTMARKTEXT;
             treeItem->setForeground(1, QBrush(Qt::red));
         }
         else if (mark == 0)
         {
-            markText = "普通";
+            markText = Marks::NORMALMARKTEXT;
         }
         else
         {
@@ -443,20 +495,6 @@ bool Copya::eventFilter(QObject *watched, QEvent *event)
             onEnterPressed();
             return true;
         }
-
-        // 添加 F4 键处理
-        if (keyEvent->key() == Qt::Key_F4)
-        {
-            togglePlainTextEditVisibility();
-            return true;
-        }
-
-        if (keyEvent->key() == Qt::Key_F12)
-        {
-            currentShowMark = -1;
-            refreshData();
-            return true;
-        }
     }
 
     // 添加 ESC 键隐藏窗口的处理（全局）
@@ -467,6 +505,19 @@ bool Copya::eventFilter(QObject *watched, QEvent *event)
         {
             saveCurrentEdit();  // 保存当前编辑的内容
             this->hide();
+            return true;
+        }
+        // 添加 F4 键处理
+        if (keyEvent->key() == Qt::Key_F4)
+        {
+            togglePlainTextEditVisibility();
+            return true;
+        }
+        if (keyEvent->key() == Qt::Key_F12)
+        {
+            currentShowMark = -1;
+            onClearSearchClicked(false);
+            refreshData();
             return true;
         }
     }
@@ -544,12 +595,12 @@ void Copya::loadData()
         QString markText;
         if (mark == 1)
         {
-            markText = "重要";
+            markText = Marks::IMPORTANTMARKTEXT;
             treeItem->setForeground(1, QBrush(Qt::red));
         }
         else if (mark == 0)
         {
-            markText = "普通";
+            markText = Marks::NORMALMARKTEXT;
         }
         else
         {
@@ -861,7 +912,8 @@ void Copya::refreshLabelsDisplay()
             {
                 qDebug() << "图标文件不存在:" << iconPath;
                 // 如果没有图标，设置一个默认的样式或使用文字
-                button->setStyleSheet(button->styleSheet() +DefaultQss::TOOLSETNULL);
+                button->setStyleSheet(button->styleSheet() +
+                                      DefaultQss::TOOLSETNULL);
             }
 
             button->setAutoRaise(true);
@@ -1032,7 +1084,7 @@ QString Copya::getLabelTextByMark(int mark)
 {
     if (mark == 0)
     {
-        return "普通";
+        return Marks::NORMALMARKTEXT;
     }
 
     // 查找对应的mark
@@ -1045,7 +1097,7 @@ QString Copya::getLabelTextByMark(int mark)
     }
 
     // 如果没有找到，返回"普通"
-    return "普通";
+    return Marks::NORMALMARKTEXT;
 }
 
 // 获取mark对应的所有项目
@@ -1120,12 +1172,12 @@ void Copya::loadMarkData(int mark)
         QString markText;
         if (mark == 1)
         {
-            markText = "重要";
+            markText = Marks::IMPORTANTMARKTEXT;
             treeItem->setForeground(1, QBrush(Qt::red));
         }
         else if (mark == 0)
         {
-            markText = "普通";
+            markText = Marks::NORMALMARKTEXT;
         }
         else
         {

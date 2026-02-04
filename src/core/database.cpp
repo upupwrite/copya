@@ -863,7 +863,6 @@ int ClipDatabase::setLabel(const std::string &label)
     return newMark;
 }
 
-// 设置项目的mark（修复现有问题）
 bool ClipDatabase::setMark(int id, int mark)
 {
     if (!db)
@@ -904,10 +903,8 @@ bool ClipDatabase::setMark(int id, int mark)
         logSuccess("使用特殊mark值 " + std::to_string(mark) + "（跳过检查）");
     }
 
-    // 更新texts表中的mark
-    std::string sql =
-        "UPDATE texts SET mark = ?, updated_time = CURRENT_TIMESTAMP WHERE id "
-        "= ?;";
+    // 更新texts表中的mark（不更新时间）
+    std::string sql = "UPDATE texts SET mark = ? WHERE id = ?;";  // 移除了更新时间
 
     sqlite3_stmt *stmt = nullptr;
     int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
@@ -941,7 +938,6 @@ bool ClipDatabase::setMark(int id, int mark)
                ", Mark: " + std::to_string(mark) + ")");
     return true;
 }
-
 // 载入最新的N条项目
 std::vector<std::tuple<int, std::string, int, std::string>>
 ClipDatabase::readRecentData(int limit)

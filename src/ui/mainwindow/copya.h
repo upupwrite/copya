@@ -21,6 +21,14 @@ class Copya;
 }
 QT_END_NAMESPACE
 
+namespace Marks {
+    inline const int IMPORTANTMARK=1;
+    inline const QString IMPORTANTMARKTEXT="重要";
+    inline const int NORMALMARK=0;
+    inline const QString NORMALMARKTEXT="普通";
+}
+
+
 class Copya : public QMainWindow
 {
     Q_OBJECT
@@ -28,6 +36,8 @@ class Copya : public QMainWindow
 public:
     explicit Copya(QWidget *parent = nullptr);
     ~Copya();
+
+
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -43,8 +53,7 @@ private slots:
     void onMarkAsImportant();
     void onMarkAsNormal();
     void onSearchTextChanged(const QString &text);
-    void onSearchButtonClicked();
-    void onClearSearchClicked();
+    void onClearSearchClicked(bool isRefreshData = true);
     void onMarkAsIt(int mark);
     void onPlainTextEditChanged();
     void onTreeWidgetCurrentItemChanged(QTreeWidgetItem *current,
