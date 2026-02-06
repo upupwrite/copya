@@ -13,6 +13,7 @@ set(RESOURCE_FILES
     ${CMAKE_SOURCE_DIR}/resources/icon.qrc
 )
 
+
 # 根据Qt版本创建可执行文件
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(copya
@@ -28,38 +29,6 @@ else()
         ${RESOURCE_FILES}
     )
 endif()
-
-# 设置翻译相关变量
-set(TS_FILES
-    translations/${PROJECT_NAME}_zh_CN.ts
-    translations/${PROJECT_NAME}_en_US.ts
-    # 添加更多语言文件
-)
-
-set(QM_FILES "")
-foreach(ts_file ${TS_FILES})
-    get_filename_component(qm_file ${ts_file} NAME_WE)
-    set(qm_file "${CMAKE_CURRENT_BINARY_DIR}/${qm_file}.qm")
-    list(APPEND QM_FILES ${qm_file})
-
-    # 生成翻译文件
-    add_custom_command(
-        OUTPUT ${qm_file}
-        COMMAND Qt6::lrelease
-        ARGS ${ts_file} -qm ${qm_file}
-        DEPENDS ${ts_file}
-        VERBATIM
-    )
-endforeach()
-
-# 添加自定义目标来生成翻译文件
-add_custom_target(translations ALL DEPENDS ${QM_FILES})
-
-# 将生成的.qm文件添加到资源系统
-qt_add_resources(${PROJECT_NAME} "translations"
-    PREFIX "/translations"
-    FILES ${QM_FILES}
-)
 
 
 # 链接库 - 注意顺序也很重要

@@ -17,6 +17,10 @@ public:
     ~Setting();
 
 private:
+    QWidget *select = findChild<QWidget *>("select");
+    QWidget *display = findChild<QWidget *>("display");
+    QWidget *conform = findChild<QWidget *>("conform");
+
     Ui::Setting *ui;
 };
 

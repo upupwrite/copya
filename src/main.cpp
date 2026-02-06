@@ -2,16 +2,18 @@
 #include <QApplication>
 #include <QCommandLineOption>
 #include <QCommandLineParser>
+#include <QDebug>  // 添加 QDebug 头文件
 #include <QDir>
+#include <QLibraryInfo>
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QMenu>
 #include <QMessageBox>
 #include <QStyle>
 #include <QSystemTrayIcon>
-#include <iostream>
 #include <QTranslator>
-#include <QLibraryInfo>
+#include <iostream>
+
 #include "copya.h"
 
 int main(int argc, char *argv[])
@@ -22,40 +24,47 @@ int main(int argc, char *argv[])
     QApplication::setApplicationName("Copya");
     QApplication::setApplicationVersion("1.1.2");
     QApplication::setOrganizationName("Copya");
+
+    // 安装 Qt 自身翻译
     QTranslator qtTranslator;
-   if (qtTranslator.load(QLocale::system(),
-                        "qt", "_",
-                        QLibraryInfo::path(QLibraryInfo::TranslationsPath))) {
-       app.installTranslator(&qtTranslator);
-   }
+    // 使用新的方法获取翻译路径
+    QString qtTranslationsPath =
+        QLibraryInfo::location(QLibraryInfo::TranslationsPath);
+    if (qtTranslator.load(QLocale::system(), "qt", "_", qtTranslationsPath))
+    {
+        a.installTranslator(&qtTranslator);
+    }
 
-   // 安装应用程序翻译
-   QTranslator appTranslator;
-   QString locale = QLocale::system().name(); // 如: "zh_CN"
+    // 安装应用程序翻译
+    QTranslator appTranslator;
+    QString locale = QLocale::system().name();  // 如: "zh_CN"
 
-   // 尝试从多个位置加载翻译文件
-   QStringList searchPaths = {
-       QApplication::applicationDirPath() + "/translations",
-       ":/translations",
-       QDir::currentPath() + "/translations"
-   };
+    // 尝试从多个位置加载翻译文件
+    QStringList searchPaths = {
+        QApplication::applicationDirPath() + "/translations", ":/translations",
+        QDir::currentPath() + "/translations"};
 
-   bool loaded = false;
-   for (const QString &path : searchPaths) {
-       qDebug() << "Looking for translation in:" << path;
-       if (appTranslator.load(QString("MyProject_%1").arg(locale), path)) {
-           loaded = true;
-           qDebug() << "Translation loaded from:" << path;
-           break;
-       }
-   }
+    bool loaded = false;
+    for (const QString &path : searchPaths)
+    {
+        qDebug() << "Looking for translation in:" << path;
+        if (appTranslator.load(QString("Copya_%1").arg(locale),
+                               path))  // 修改为 Copya
+        {
+            loaded = true;
+            qDebug() << "Translation loaded from:" << path;
+            break;
+        }
+    }
 
-   if (loaded) {
-       app.installTranslator(&appTranslator);
-   } else {
-       qWarning() << "Translation file not found for locale:" << locale;
-   }
-
+    if (loaded)
+    {
+        a.installTranslator(&appTranslator);  // 使用 a 而不是 app
+    }
+    else
+    {
+        qWarning() << "Translation file not found for locale:" << locale;
+    }
 
     // 解析命令行参数
     QCommandLineParser parser;
@@ -78,20 +87,21 @@ int main(int argc, char *argv[])
     bool isFirstInstance = false;
     if (socket.waitForConnected(500))
     {
-        // 处理--menu参数
+        // 已经有实例在运行
         if (parser.isSet(menuOption))
         {
+            // 如果有 --menu 参数，发送 toggle 消息
             socket.write("toggle");
+            socket.waitForBytesWritten(1000);
         }
         else
         {
+            // 如果没有参数，激活现有窗口
             socket.write("activate");
+            socket.waitForBytesWritten(1000);
         }
-        socket.waitForBytesWritten(1000);
         socket.close();
-
-        // 无论是否有--menu参数，都不启动新实例，直接退出
-        return 0;
+        return 0;  // 直接退出，不启动新实例
     }
     else
     {
@@ -99,20 +109,11 @@ int main(int argc, char *argv[])
     }
     socket.close();
 
-    // 检查是否是第一次启动且传入了--menu参数
-    if (isFirstInstance && parser.isSet(menuOption))
-    {
-        // 第一次启动时如果传入了--menu参数，不启动程序
-        std::cout << "无法使用--menu参数" << std::endl;
-        return 0;
-    }
-
-    // 如果没有已有实例，正常启动程序
-
     // 创建本地服务器用于进程间通信
     QLocalServer server;
     if (!server.listen(serverName))
     {
+        // 如果监听失败，先移除可能存在的旧服务器
         QLocalServer::removeServer(serverName);
         if (!server.listen(serverName))
         {
@@ -124,6 +125,17 @@ int main(int argc, char *argv[])
     // 创建主窗口但不立即显示
     Copya w;
 
+    // 第一次启动时，如果有 --menu 参数，立即显示窗口
+    if (isFirstInstance && parser.isSet(menuOption))
+    {
+        w.show();
+    }
+    else if (!parser.isSet(menuOption))
+    {
+        // 第一次启动且没有 --menu 参数，默认隐藏窗口
+        w.hide();
+    }
+
     // 连接服务器信号
     QObject::connect(
         &server, &QLocalServer::newConnection, &w,
@@ -133,40 +145,51 @@ int main(int argc, char *argv[])
             if (!clientSocket)
                 return;
 
-            QObject::connect(clientSocket, &QLocalSocket::readyRead,
-                             [&w, clientSocket]()
-                             {
-                                 QByteArray data = clientSocket->readAll();
-                                 if (data == "toggle")
-                                 {
-                                     if (w.isVisible())
-                                     {
-                                         w.hide();
-                                     }
-                                     else
-                                     {
-                                         w.show();
-                                         w.activateWindow();
-                                         w.raise();
-                                     }
-                                 }
-                                 else if (data == "activate")
-                                 {
-                                     w.show();
-                                     w.activateWindow();
-                                     w.raise();
-                                 }
-                                 clientSocket->close();
-                                 clientSocket->deleteLater();
-                             });
+            QObject::connect(
+                clientSocket, &QLocalSocket::readyRead,
+                [&w, clientSocket]()
+                {
+                    QByteArray data = clientSocket->readAll();
+                    qDebug() << "Received message from other instance:" << data;
+
+                    if (data == "toggle")
+                    {
+                        if (w.isVisible())
+                        {
+                            w.hide();
+                        }
+                        else
+                        {
+                            w.show();
+                            w.activateWindow();
+                            w.raise();
+                        }
+                    }
+                    else if (data == "activate")
+                    {
+                        w.show();
+                        w.activateWindow();
+                        w.raise();
+                    }
+                    clientSocket->close();
+                    clientSocket->deleteLater();
+                });
         });
 
     // 创建系统托盘图标
     QSystemTrayIcon *trayIcon = new QSystemTrayIcon(&w);
 
-    // 使用Qt内置图标
-    trayIcon->setIcon(
-        QApplication::style()->standardIcon(QStyle::SP_ComputerIcon));
+    // 使用 Qt 内置图标（可以替换为自己的图标）
+    QIcon appIcon(":/icons/copya.png");  // 建议使用自己的图标
+    if (appIcon.isNull())
+    {
+        trayIcon->setIcon(
+            QApplication::style()->standardIcon(QStyle::SP_ComputerIcon));
+    }
+    else
+    {
+        trayIcon->setIcon(appIcon);
+    }
 
     // 创建托盘菜单
     QMenu *trayMenu = new QMenu();
@@ -180,7 +203,13 @@ int main(int argc, char *argv[])
     // 连接信号槽
     QObject::connect(showAction, &QAction::triggered, &w, &Copya::show);
     QObject::connect(hideAction, &QAction::triggered, &w, &Copya::hide);
-    QObject::connect(quitAction, &QAction::triggered, &a, &QApplication::quit);
+    QObject::connect(quitAction, &QAction::triggered,
+                     [&a, &server, serverName]()
+                     {
+                         server.close();
+                         QLocalServer::removeServer(serverName);
+                         a.quit();
+                     });
 
     // 托盘图标点击事件
     QObject::connect(trayIcon, &QSystemTrayIcon::activated,

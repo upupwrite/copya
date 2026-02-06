@@ -1,10 +1,15 @@
+set(CMAKE_AUTOUIC ON)
 # 设置源文件
 set(SETTINGS_SOURCES
     setting.cpp
     setting.h
     setting.ui
-)
+    general.ui
+    general.cpp
+    general.h
+    setwidget.h
 
+)
 # 创建静态库
 add_library(copya_settings STATIC ${SETTINGS_SOURCES})
 
