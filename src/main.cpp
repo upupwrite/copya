@@ -10,7 +10,8 @@
 #include <QStyle>
 #include <QSystemTrayIcon>
 #include <iostream>
-
+#include <QTranslator>
+#include <QLibraryInfo>
 #include "copya.h"
 
 int main(int argc, char *argv[])
@@ -21,6 +22,40 @@ int main(int argc, char *argv[])
     QApplication::setApplicationName("Copya");
     QApplication::setApplicationVersion("1.1.2");
     QApplication::setOrganizationName("Copya");
+    QTranslator qtTranslator;
+   if (qtTranslator.load(QLocale::system(),
+                        "qt", "_",
+                        QLibraryInfo::path(QLibraryInfo::TranslationsPath))) {
+       app.installTranslator(&qtTranslator);
+   }
+
+   // 安装应用程序翻译
+   QTranslator appTranslator;
+   QString locale = QLocale::system().name(); // 如: "zh_CN"
+
+   // 尝试从多个位置加载翻译文件
+   QStringList searchPaths = {
+       QApplication::applicationDirPath() + "/translations",
+       ":/translations",
+       QDir::currentPath() + "/translations"
+   };
+
+   bool loaded = false;
+   for (const QString &path : searchPaths) {
+       qDebug() << "Looking for translation in:" << path;
+       if (appTranslator.load(QString("MyProject_%1").arg(locale), path)) {
+           loaded = true;
+           qDebug() << "Translation loaded from:" << path;
+           break;
+       }
+   }
+
+   if (loaded) {
+       app.installTranslator(&appTranslator);
+   } else {
+       qWarning() << "Translation file not found for locale:" << locale;
+   }
+
 
     // 解析命令行参数
     QCommandLineParser parser;

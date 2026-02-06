@@ -10,6 +10,7 @@
 #include <QShortcut>
 #include <QTreeWidget>
 #include <QVBoxLayout>
+#include <QCoreApplication>
 
 #include "core/clipboard.h"
 #include "core/database.h"
@@ -24,9 +25,9 @@ QT_END_NAMESPACE
 namespace Marks
 {
 inline const int IMPORTANTMARK = 1;
-inline const QString IMPORTANTMARKTEXT = "重要";
+inline const QString IMPORTANTMARKTEXT = QCoreApplication::translate("Marks","重要");
 inline const int NORMALMARK = 0;
-inline const QString NORMALMARKTEXT = "普通";
+inline const QString NORMALMARKTEXT = QCoreApplication::translate("Marks","普通");
 }  // namespace Marks
 
 class Copya : public QMainWindow
