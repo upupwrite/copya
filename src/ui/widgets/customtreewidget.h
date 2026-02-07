@@ -1,15 +1,16 @@
 #ifndef CUSTOMTREEWIDGET_H
 #define CUSTOMTREEWIDGET_H
 
-#include <QTreeWidget>
 #include <QTimer>
+#include <QTreeWidget>
 
 class CustomTreeWidget : public QTreeWidget
 {
     Q_OBJECT
 
 public:
-    enum ScrollBehavior {
+    enum ScrollBehavior
+    {
         ScrollToTop,
         ScrollToCenter,
         ScrollToBottom
@@ -18,7 +19,8 @@ public:
     explicit CustomTreeWidget(QWidget *parent = nullptr);
 
     // 重写滚动方法
-    void scrollTo(const QModelIndex &index, ScrollHint hint = EnsureVisible) override;
+    void scrollTo(const QModelIndex &index,
+                  ScrollHint hint = EnsureVisible) override;
 
     // 自动滚动设置
     void setAutoScrollOnSelection(bool enable);
@@ -63,11 +65,12 @@ private:
     void scrollToEnsureVisible(QTreeWidgetItem *item);
 
     // 递归计算可见子项数量
-    int countVisibleChildren(QTreeWidgetItem *parent, const QRect &viewportRect) const;
+    int countVisibleChildren(QTreeWidgetItem *parent,
+                             const QRect &viewportRect) const;
 
     bool m_autoScrollOnSelection;
     ScrollBehavior m_scrollBehavior;
     int m_scrollMargin;
 };
 
-#endif // CUSTOMTREEWIDGET_H
+#endif  // CUSTOMTREEWIDGET_H

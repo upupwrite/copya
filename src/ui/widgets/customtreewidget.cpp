@@ -1,15 +1,16 @@
 #include "customtreewidget.h"
-#include <QScrollBar>
+
 #include <QApplication>
 #include <QDebug>
 #include <QKeyEvent>
+#include <QScrollBar>
 
 CustomTreeWidget::CustomTreeWidget(QWidget *parent) : QTreeWidget(parent)
 {
     // 初始化时可以设置一些属性
-    m_autoScrollOnSelection = true; // 默认启用选择时自动滚动
-    m_scrollBehavior = ScrollToCenter; // 默认滚动到中间
-    m_scrollMargin = 20; // 滚动边距
+    m_autoScrollOnSelection = true;     // 默认启用选择时自动滚动
+    m_scrollBehavior = ScrollToCenter;  // 默认滚动到中间
+    m_scrollMargin = 20;                // 滚动边距
 }
 
 void CustomTreeWidget::scrollTo(const QModelIndex &index, ScrollHint hint)
@@ -37,12 +38,14 @@ bool CustomTreeWidget::autoScrollOnSelection() const
 // 设置焦点到第一项并自动滚动到第一项
 void CustomTreeWidget::setFocusToFirstItemAndScroll()
 {
-    if (topLevelItemCount() == 0) {
+    if (topLevelItemCount() == 0)
+    {
         return;
     }
 
     QTreeWidgetItem *firstItem = topLevelItem(0);
-    if (firstItem) {
+    if (firstItem)
+    {
         // 清除当前选择
         clearSelection();
 
@@ -60,7 +63,8 @@ void CustomTreeWidget::setFocusToFirstItemAndScroll()
 // 检查项是否完全可见
 bool CustomTreeWidget::isItemFullyVisible(QTreeWidgetItem *item) const
 {
-    if (!item) return false;
+    if (!item)
+        return false;
 
     // 获取项的视觉矩形
     QRect itemRect = visualItemRect(item);
@@ -70,7 +74,8 @@ bool CustomTreeWidget::isItemFullyVisible(QTreeWidgetItem *item) const
 
     // 检查项的顶部和底部是否都在视口内
     bool topVisible = itemRect.top() >= viewportRect.top() - m_scrollMargin;
-    bool bottomVisible = itemRect.bottom() <= viewportRect.bottom() + m_scrollMargin;
+    bool bottomVisible =
+        itemRect.bottom() <= viewportRect.bottom() + m_scrollMargin;
 
     return topVisible && bottomVisible;
 }
@@ -78,7 +83,8 @@ bool CustomTreeWidget::isItemFullyVisible(QTreeWidgetItem *item) const
 // 检查项是否部分可见
 bool CustomTreeWidget::isItemPartiallyVisible(QTreeWidgetItem *item) const
 {
-    if (!item) return false;
+    if (!item)
+        return false;
 
     QRect itemRect = visualItemRect(item);
     QRect viewportRect = viewport()->rect();
@@ -90,17 +96,20 @@ bool CustomTreeWidget::isItemPartiallyVisible(QTreeWidgetItem *item) const
 // 滚动到项以确保它可见
 void CustomTreeWidget::scrollToEnsureVisible(QTreeWidgetItem *item)
 {
-    if (!item || !m_autoScrollOnSelection) {
+    if (!item || !m_autoScrollOnSelection)
+    {
         return;
     }
 
     // 如果项已经完全可见，不需要滚动
-    if (isItemFullyVisible(item)) {
+    if (isItemFullyVisible(item))
+    {
         return;
     }
 
     // 根据滚动行为决定如何滚动
-    switch (m_scrollBehavior) {
+    switch (m_scrollBehavior)
+    {
     case ScrollToTop:
         scrollToItem(item, QAbstractItemView::PositionAtTop);
         break;
@@ -118,7 +127,8 @@ void CustomTreeWidget::scrollToEnsureVisible(QTreeWidgetItem *item)
 void CustomTreeWidget::moveToNextItem()
 {
     QTreeWidgetItem *current = currentItem();
-    if (!current) {
+    if (!current)
+    {
         setFocusToFirstItemAndScroll();
         return;
     }
@@ -127,56 +137,74 @@ void CustomTreeWidget::moveToNextItem()
     QTreeWidgetItem *nextItem = itemBelow(current);
 
     // 如果没有下一项，则尝试获取第一个子项（如果展开的话）
-    if (!nextItem && current->isExpanded() && current->childCount() > 0) {
+    if (!nextItem && current->isExpanded() && current->childCount() > 0)
+    {
         nextItem = current->child(0);
     }
 
     // 如果还是没有下一项，尝试获取同级的下一个
-    if (!nextItem) {
+    if (!nextItem)
+    {
         QTreeWidgetItem *parent = current->parent();
-        if (parent) {
+        if (parent)
+        {
             int index = parent->indexOfChild(current);
-            if (index < parent->childCount() - 1) {
+            if (index < parent->childCount() - 1)
+            {
                 nextItem = parent->child(index + 1);
             }
         }
     }
 
     // 如果还是没有下一项，尝试获取下一个顶级项
-    if (!nextItem) {
+    if (!nextItem)
+    {
         QTreeWidgetItem *parent = current->parent();
-        if (parent) {
+        if (parent)
+        {
             // 当前项有父项，找到父项的索引
             QTreeWidgetItem *grandParent = parent->parent();
-            if (grandParent) {
+            if (grandParent)
+            {
                 int parentIndex = grandParent->indexOfChild(parent);
-                if (parentIndex < grandParent->childCount() - 1) {
+                if (parentIndex < grandParent->childCount() - 1)
+                {
                     // 查找父项下一个兄弟的第一个子项
-                    QTreeWidgetItem *nextParent = grandParent->child(parentIndex + 1);
-                    while (nextParent && nextParent->childCount() == 0) {
+                    QTreeWidgetItem *nextParent =
+                        grandParent->child(parentIndex + 1);
+                    while (nextParent && nextParent->childCount() == 0)
+                    {
                         parentIndex++;
-                        if (parentIndex < grandParent->childCount() - 1) {
+                        if (parentIndex < grandParent->childCount() - 1)
+                        {
                             nextParent = grandParent->child(parentIndex + 1);
-                        } else {
+                        }
+                        else
+                        {
                             nextParent = nullptr;
                         }
                     }
-                    if (nextParent && nextParent->childCount() > 0) {
+                    if (nextParent && nextParent->childCount() > 0)
+                    {
                         nextItem = nextParent->child(0);
                     }
                 }
             }
-        } else {
+        }
+        else
+        {
             // 当前项是顶级项
             int index = indexOfTopLevelItem(current);
-            if (index < topLevelItemCount() - 1) {
+            if (index < topLevelItemCount() - 1)
+            {
                 nextItem = topLevelItem(index + 1);
             }
         }
     }
 
     // 如果找到下一项，选中并滚动到它
-    if (nextItem) {
+    if (nextItem)
+    {
         // 清除当前选择
         clearSelection();
 
@@ -187,7 +215,8 @@ void CustomTreeWidget::moveToNextItem()
         scrollToEnsureVisible(nextItem);
 
         // 如果需要，展开父项
-        if (nextItem->parent() && !nextItem->parent()->isExpanded()) {
+        if (nextItem->parent() && !nextItem->parent()->isExpanded())
+        {
             expandItem(nextItem->parent());
         }
     }
@@ -197,7 +226,8 @@ void CustomTreeWidget::moveToNextItem()
 void CustomTreeWidget::moveToPrevItem()
 {
     QTreeWidgetItem *current = currentItem();
-    if (!current) {
+    if (!current)
+    {
         setFocusToFirstItemAndScroll();
         return;
     }
@@ -206,15 +236,18 @@ void CustomTreeWidget::moveToPrevItem()
     QTreeWidgetItem *prevItem = itemAbove(current);
 
     // 如果没有前一项，尝试获取父项
-    if (!prevItem) {
+    if (!prevItem)
+    {
         QTreeWidgetItem *parent = current->parent();
-        if (parent) {
+        if (parent)
+        {
             prevItem = parent;
         }
     }
 
     // 如果找到前一项，选中并滚动到它
-    if (prevItem) {
+    if (prevItem)
+    {
         // 清除当前选择
         clearSelection();
 
@@ -230,7 +263,8 @@ void CustomTreeWidget::moveToPrevItem()
 void CustomTreeWidget::keyPressEvent(QKeyEvent *event)
 {
     // 处理特定的导航键
-    switch (event->key()) {
+    switch (event->key())
+    {
     case Qt::Key_Up:
         // 上箭头键 - 移动到前一项
         moveToPrevItem();
@@ -251,9 +285,11 @@ void CustomTreeWidget::keyPressEvent(QKeyEvent *event)
 
     case Qt::Key_End:
         // End键 - 移动到最后一项
-        if (topLevelItemCount() > 0) {
+        if (topLevelItemCount() > 0)
+        {
             QTreeWidgetItem *lastItem = topLevelItem(topLevelItemCount() - 1);
-            if (lastItem) {
+            if (lastItem)
+            {
                 // 清除当前选择
                 clearSelection();
 
@@ -276,12 +312,15 @@ void CustomTreeWidget::keyPressEvent(QKeyEvent *event)
         QTreeWidget::keyPressEvent(event);
 
         // 延迟检查并确保当前项可见
-        QTimer::singleShot(0, this, [this]() {
-            QTreeWidgetItem *current = currentItem();
-            if (current) {
-                scrollToEnsureVisible(current);
-            }
-        });
+        QTimer::singleShot(0, this,
+                           [this]()
+                           {
+                               QTreeWidgetItem *current = currentItem();
+                               if (current)
+                               {
+                                   scrollToEnsureVisible(current);
+                               }
+                           });
         event->accept();
         return;
 
@@ -291,12 +330,15 @@ void CustomTreeWidget::keyPressEvent(QKeyEvent *event)
         QTreeWidget::keyPressEvent(event);
 
         // 延迟确保当前项可见
-        QTimer::singleShot(0, this, [this]() {
-            QTreeWidgetItem *current = currentItem();
-            if (current) {
-                scrollToEnsureVisible(current);
-            }
-        });
+        QTimer::singleShot(0, this,
+                           [this]()
+                           {
+                               QTreeWidgetItem *current = currentItem();
+                               if (current)
+                               {
+                                   scrollToEnsureVisible(current);
+                               }
+                           });
         event->accept();
         return;
 
@@ -305,12 +347,15 @@ void CustomTreeWidget::keyPressEvent(QKeyEvent *event)
         QTreeWidget::keyPressEvent(event);
 
         // 检查选择变化后是否需要滚动
-        QTimer::singleShot(0, this, [this]() {
-            QTreeWidgetItem *current = currentItem();
-            if (current && m_autoScrollOnSelection) {
-                scrollToEnsureVisible(current);
-            }
-        });
+        QTimer::singleShot(0, this,
+                           [this]()
+                           {
+                               QTreeWidgetItem *current = currentItem();
+                               if (current && m_autoScrollOnSelection)
+                               {
+                                   scrollToEnsureVisible(current);
+                               }
+                           });
         break;
     }
 }
@@ -322,12 +367,15 @@ void CustomTreeWidget::wheelEvent(QWheelEvent *event)
     QTreeWidget::wheelEvent(event);
 
     // 延迟检查并确保当前项可见
-    QTimer::singleShot(0, this, [this]() {
-        QTreeWidgetItem *current = currentItem();
-        if (current && m_autoScrollOnSelection) {
-            scrollToEnsureVisible(current);
-        }
-    });
+    QTimer::singleShot(0, this,
+                       [this]()
+                       {
+                           QTreeWidgetItem *current = currentItem();
+                           if (current && m_autoScrollOnSelection)
+                           {
+                               scrollToEnsureVisible(current);
+                           }
+                       });
 }
 
 // 设置滚动行为
@@ -347,15 +395,13 @@ void CustomTreeWidget::setScrollMargin(int margin)
     m_scrollMargin = qMax(0, margin);
 }
 
-int CustomTreeWidget::scrollMargin() const
-{
-    return m_scrollMargin;
-}
+int CustomTreeWidget::scrollMargin() const { return m_scrollMargin; }
 
 // 聚焦并滚动到特定项
 void CustomTreeWidget::focusAndScrollToItem(QTreeWidgetItem *item)
 {
-    if (!item) return;
+    if (!item)
+        return;
 
     // 清除当前选择
     clearSelection();
@@ -377,9 +423,11 @@ int CustomTreeWidget::visibleItemCount() const
     int count = 0;
 
     // 遍历所有项，检查是否在视口中
-    for (int i = 0; i < topLevelItemCount(); ++i) {
+    for (int i = 0; i < topLevelItemCount(); ++i)
+    {
         QTreeWidgetItem *item = topLevelItem(i);
-        if (item && isItemFullyVisible(item)) {
+        if (item && isItemFullyVisible(item))
+        {
             count++;
         }
 
@@ -391,16 +439,20 @@ int CustomTreeWidget::visibleItemCount() const
 }
 
 // 递归计算可见子项数量
-int CustomTreeWidget::countVisibleChildren(QTreeWidgetItem *parent, const QRect &viewportRect) const
+int CustomTreeWidget::countVisibleChildren(QTreeWidgetItem *parent,
+                                           const QRect &viewportRect) const
 {
-    if (!parent || !parent->isExpanded()) {
+    if (!parent || !parent->isExpanded())
+    {
         return 0;
     }
 
     int count = 0;
-    for (int i = 0; i < parent->childCount(); ++i) {
+    for (int i = 0; i < parent->childCount(); ++i)
+    {
         QTreeWidgetItem *child = parent->child(i);
-        if (child && isItemFullyVisible(child)) {
+        if (child && isItemFullyVisible(child))
+        {
             count++;
         }
 
