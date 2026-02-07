@@ -11,6 +11,9 @@ CustomTreeWidget::CustomTreeWidget(QWidget *parent) : QTreeWidget(parent)
     m_autoScrollOnSelection = true;     // 默认启用选择时自动滚动
     m_scrollBehavior = ScrollToCenter;  // 默认滚动到中间
     m_scrollMargin = 20;                // 滚动边距
+
+    // 添加标志，控制鼠标滚轮是否触发自动滚动
+    m_enableWheelAutoScroll = false;  // 默认禁用鼠标滚轮的自动滚动
 }
 
 void CustomTreeWidget::scrollTo(const QModelIndex &index, ScrollHint hint)
@@ -33,6 +36,17 @@ void CustomTreeWidget::setAutoScrollOnSelection(bool enable)
 bool CustomTreeWidget::autoScrollOnSelection() const
 {
     return m_autoScrollOnSelection;
+}
+
+// 设置鼠标滚轮是否触发自动滚动
+void CustomTreeWidget::setWheelAutoScroll(bool enable)
+{
+    m_enableWheelAutoScroll = enable;
+}
+
+bool CustomTreeWidget::wheelAutoScroll() const
+{
+    return m_enableWheelAutoScroll;
 }
 
 // 设置焦点到第一项并自动滚动到第一项
@@ -363,19 +377,22 @@ void CustomTreeWidget::keyPressEvent(QKeyEvent *event)
 // 重写鼠标滚轮事件
 void CustomTreeWidget::wheelEvent(QWheelEvent *event)
 {
-    // 先让基类处理滚轮事件
+    // 直接调用基类的实现，允许自由滚动
     QTreeWidget::wheelEvent(event);
 
-    // 延迟检查并确保当前项可见
-    QTimer::singleShot(0, this,
-                       [this]()
-                       {
-                           QTreeWidgetItem *current = currentItem();
-                           if (current && m_autoScrollOnSelection)
+    // 如果启用了鼠标滚轮的自动滚动，才延迟检查并确保当前项可见
+    if (m_enableWheelAutoScroll)
+    {
+        QTimer::singleShot(0, this,
+                           [this]()
                            {
-                               scrollToEnsureVisible(current);
-                           }
-                       });
+                               QTreeWidgetItem *current = currentItem();
+                               if (current && m_autoScrollOnSelection)
+                               {
+                                   scrollToEnsureVisible(current);
+                               }
+                           });
+    }
 }
 
 // 设置滚动行为

@@ -17,7 +17,9 @@ public:
     };
 
     explicit CustomTreeWidget(QWidget *parent = nullptr);
-
+    // 鼠标滚轮自动滚动控制
+    void setWheelAutoScroll(bool enable);
+    bool wheelAutoScroll() const;
     // 重写滚动方法
     void scrollTo(const QModelIndex &index,
                   ScrollHint hint = EnsureVisible) override;
@@ -56,9 +58,9 @@ public:
     int visibleItemCount() const;
 
 protected:
+    void wheelEvent(QWheelEvent *event) override;
     // 重写事件处理
     void keyPressEvent(QKeyEvent *event) override;
-    void wheelEvent(QWheelEvent *event) override;
 
 private:
     // 滚动到项以确保可见
@@ -67,7 +69,7 @@ private:
     // 递归计算可见子项数量
     int countVisibleChildren(QTreeWidgetItem *parent,
                              const QRect &viewportRect) const;
-
+    bool m_enableWheelAutoScroll;  // 控制鼠标滚轮是否触发自动滚动
     bool m_autoScrollOnSelection;
     ScrollBehavior m_scrollBehavior;
     int m_scrollMargin;
