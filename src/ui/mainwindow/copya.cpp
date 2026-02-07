@@ -1200,3 +1200,14 @@ void Copya::loadMarkData(int mark)
     ui->treeWidget->blockSignals(false);     // 恢复信号
     ui->plainTextEdit->blockSignals(false);  // 恢复信号
 }
+
+void Copya::showEvent(QShowEvent *event)
+{
+    // 调用基类的showEvent
+    QMainWindow::showEvent(event);
+
+    // 在这里添加窗口显示时的处理逻辑
+    qDebug() << "窗口已显示";
+
+    ui->treeWidget->setFocusToFirstItemAndScroll();
+}

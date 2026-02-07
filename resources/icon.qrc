@@ -8,5 +8,6 @@
         <file>icon/MynauiLabelSolid.svg</file>
         <file>icon/SolarRefreshBold.svg</file>
         <file>icon/EntypoErase.svg</file>
+        <file>icon/copya.png</file>
     </qresource>
 </RCC>

@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 
     if (loaded)
     {
-        a.installTranslator(&appTranslator);  // 使用 a 而不是 app
+        a.installTranslator(&appTranslator);
     }
     else
     {
@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
     QSystemTrayIcon *trayIcon = new QSystemTrayIcon(&w);
 
     // 使用 Qt 内置图标（可以替换为自己的图标）
-    QIcon appIcon(":/icons/copya.png");  // 建议使用自己的图标
+    QIcon appIcon(":/main/icon/copya.png");  // 建议使用自己的图标
     if (appIcon.isNull())
     {
         trayIcon->setIcon(
