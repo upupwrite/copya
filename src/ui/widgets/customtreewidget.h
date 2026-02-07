@@ -1,26 +1,73 @@
 #ifndef CUSTOMTREEWIDGET_H
 #define CUSTOMTREEWIDGET_H
 
-#include <QStyleOptionViewItem>
 #include <QTreeWidget>
+#include <QTimer>
 
 class CustomTreeWidget : public QTreeWidget
 {
     Q_OBJECT
 
 public:
+    enum ScrollBehavior {
+        ScrollToTop,
+        ScrollToCenter,
+        ScrollToBottom
+    };
+
     explicit CustomTreeWidget(QWidget *parent = nullptr);
 
-    // 重写scrollTo方法，禁用自动滚动
-    void scrollTo(const QModelIndex &index,
-                  ScrollHint hint = EnsureVisible) override;
+    // 重写滚动方法
+    void scrollTo(const QModelIndex &index, ScrollHint hint = EnsureVisible) override;
 
-    // 可选：禁用自动滚动到选择项
+    // 自动滚动设置
     void setAutoScrollOnSelection(bool enable);
     bool autoScrollOnSelection() const;
 
+    // 设置焦点到第一项并自动滚动
+    void setFocusToFirstItemAndScroll();
+
+    // 移动到下一项
+    void moveToNextItem();
+
+    // 移动到前一项
+    void moveToPrevItem();
+
+    // 聚焦并滚动到特定项
+    void focusAndScrollToItem(QTreeWidgetItem *item);
+
+    // 设置滚动行为
+    void setScrollBehavior(ScrollBehavior behavior);
+    ScrollBehavior scrollBehavior() const;
+
+    // 设置滚动边距
+    void setScrollMargin(int margin);
+    int scrollMargin() const;
+
+    // 检查项是否完全可见
+    bool isItemFullyVisible(QTreeWidgetItem *item) const;
+
+    // 检查项是否部分可见
+    bool isItemPartiallyVisible(QTreeWidgetItem *item) const;
+
+    // 获取可见项数量
+    int visibleItemCount() const;
+
 protected:
-    bool m_autoScrollOnSelection = false;
+    // 重写事件处理
+    void keyPressEvent(QKeyEvent *event) override;
+    void wheelEvent(QWheelEvent *event) override;
+
+private:
+    // 滚动到项以确保可见
+    void scrollToEnsureVisible(QTreeWidgetItem *item);
+
+    // 递归计算可见子项数量
+    int countVisibleChildren(QTreeWidgetItem *parent, const QRect &viewportRect) const;
+
+    bool m_autoScrollOnSelection;
+    ScrollBehavior m_scrollBehavior;
+    int m_scrollMargin;
 };
 
-#endif  // CUSTOMTREEWIDGET_H
+#endif // CUSTOMTREEWIDGET_H
