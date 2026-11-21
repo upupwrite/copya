@@ -12,6 +12,7 @@
 #include <QShortcut>
 #include <QTreeWidget>
 #include <QVBoxLayout>
+#include <qtmetamacros.h>
 
 #include "core/clipboard.h"
 #include "core/database.h"
@@ -38,6 +39,9 @@ public:
   explicit Copya(QWidget *parent = nullptr);
   ~Copya();
 
+public slots:
+  void refreshData();
+
 protected:
   bool eventFilter(QObject *watched, QEvent *event) override;
   void closeEvent(QCloseEvent *event) override;
@@ -45,7 +49,6 @@ protected:
   //    void hideEvent(QHideEvent *event) override;
 
 private slots:
-  void refreshData();
   void onItemDoubleClicked(QTreeWidgetItem *item, int column);
   void onEnterPressed();
   void onClearAll();
@@ -65,7 +68,6 @@ private slots:
 private:
   Ui::Copya *ui;
   ClipDatabase *database;
-  Monitor *monitor;
   QWidget *widget_3 = findChild<QWidget *>("widget_3");
   std::vector<std::pair<int, std::string>> marks;
   void setupUI();
